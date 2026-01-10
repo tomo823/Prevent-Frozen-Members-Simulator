@@ -12,6 +12,7 @@ let groups = [];
 let view;
 let totalTopicChanges = 0;
 let leftOutLog = [];
+let previousLeftOutMembers = new Set(); // 前回のチェック時の離脱メンバーIDを記録
 
 /**
  * p5.js 初期化
@@ -33,6 +34,7 @@ function initSimulation() {
     groups = [];
     totalTopicChanges = 0;
     leftOutLog = [];
+    previousLeftOutMembers = new Set();
     
     const padding = 4;
     const gap = 4;
@@ -95,7 +97,11 @@ function setupEventListeners() {
     });
 
     // スライダー群のバインド
-    setupSlider('threshold', 'leftOutThreshold');
+    setupSlider('threshold', 'leftOutThreshold', (val) => {
+        // v0-displayも更新
+        const v0Display = document.getElementById('v0-display');
+        if (v0Display) v0Display.textContent = val.toFixed(2);
+    });
     setupSlider('cohesion', 'cohesionWeight');
     setupSlider('alignment', 'alignmentWeight');
     setupSlider('separation', 'separationWeight');
@@ -114,7 +120,7 @@ function setupEventListeners() {
 /**
  * スライダーの値と PARAMS を同期させる汎用関数
  */
-function setupSlider(domId, paramKey) {
+function setupSlider(domId, paramKey, onUpdate = null) {
     const el = document.getElementById(domId);
     if (!el) return;
     el.addEventListener('input', (e) => {
@@ -122,6 +128,7 @@ function setupSlider(domId, paramKey) {
         PARAMS[paramKey] = val;
         const valDisp = document.getElementById(`${domId}-val`);
         if (valDisp) valDisp.textContent = val.toFixed(2);
+        if (onUpdate) onUpdate(val);
     });
 }
 
@@ -151,8 +158,292 @@ function updateUIDynamic() {
     const topic = group.getCurrentTopic();
     document.getElementById('topic-name').textContent = topic.name;
     document.getElementById('vg-display').textContent = group.getGroupVelocity().toFixed(2);
+    document.getElementById('v0-display').textContent = PARAMS.leftOutThreshold.toFixed(2);
+    
+    // 次元情報の表示
+    updateTopicDimensions(topic);
+    
+    // メンバーリストの表示
+    updateMemberList(group, topic);
+    
+    // 離脱ログの更新
+    updateLeftOutLog();
+    
+    // グラフ凡例の更新
+    updateGraphLegend();
 }
 
 function updateUIStatic() {
     // モードによってボタンの表示/非表示を切り替えるなどの処理
+}
+
+/**
+ * トピックの次元情報を表示
+ */
+function updateTopicDimensions(topic) {
+    const container = document.getElementById('topic-dimensions');
+    if (!container || !topic) return;
+    
+    container.innerHTML = '';
+    
+    // 各次元のバーを作成
+    topic.vector.forEach((value, index) => {
+        const dimensionName = CONFIG.dimensionNames[index] || `Dim${index + 1}`;
+        const dimensionColor = CONFIG.dimensionColors[index] || '#888';
+        const percentage = (value * 100).toFixed(1);
+        
+        const barDiv = document.createElement('div');
+        barDiv.className = 'dimension-bar';
+        
+        const labelSpan = document.createElement('span');
+        labelSpan.className = 'label';
+        labelSpan.textContent = dimensionName;
+        labelSpan.style.color = dimensionColor;
+        
+        const trackDiv = document.createElement('div');
+        trackDiv.className = 'bar-track';
+        
+        const fillDiv = document.createElement('div');
+        fillDiv.className = 'bar-fill';
+        fillDiv.style.width = `${value * 100}%`;
+        fillDiv.style.background = dimensionColor;
+        
+        const valueSpan = document.createElement('span');
+        valueSpan.className = 'value';
+        valueSpan.textContent = percentage + '%';
+        valueSpan.style.color = dimensionColor;
+        valueSpan.style.fontSize = '0.65rem';
+        valueSpan.style.minWidth = '40px';
+        valueSpan.style.textAlign = 'right';
+        
+        trackDiv.appendChild(fillDiv);
+        barDiv.appendChild(labelSpan);
+        barDiv.appendChild(trackDiv);
+        barDiv.appendChild(valueSpan);
+        
+        container.appendChild(barDiv);
+    });
+}
+
+/**
+ * メンバーリストを更新（興味度降順で表示）
+ */
+function updateMemberList(group, topic) {
+    const container = document.getElementById('member-list');
+    if (!container || !group || !topic) return;
+    
+    // メンバーを現在のトピックに対する興味度でソート（降順）
+    const membersWithInterest = group.members.map(member => {
+        // 現在のトピックに対する興味度を計算（既に計算済みの場合はそれを使用）
+        const interest = member.currentInterest || 0;
+        const interestPercent = (interest / CONFIG.maxInterest) * 100;
+        
+        return {
+            member,
+            interest,
+            interestPercent
+        };
+    });
+    
+    // 興味度で降順ソート
+    membersWithInterest.sort((a, b) => b.interest - a.interest);
+    
+    container.innerHTML = '';
+    
+    membersWithInterest.forEach(({ member, interestPercent }) => {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'member-item';
+        
+        // 離脱メンバーは赤く表示
+        if (member.leftOut) {
+            itemDiv.classList.add('left-out');
+        }
+        
+        // メンバーID
+        const idSpan = document.createElement('span');
+        idSpan.className = 'member-id';
+        idSpan.textContent = `M${member.memberId + 1}`;
+        idSpan.style.fontWeight = 'bold';
+        idSpan.style.minWidth = '30px';
+        
+        // 興味カテゴリ（3文字以内）
+        const categorySpan = document.createElement('span');
+        categorySpan.className = 'member-category';
+        const categoryName = getCategoryAbbreviation(member.primaryInterestDim);
+        categorySpan.textContent = categoryName;
+        categorySpan.style.fontWeight = 'bold';
+        categorySpan.style.minWidth = '35px';
+        categorySpan.style.color = CONFIG.dimensionColors[member.primaryInterestDim];
+        
+        // 興味度バーグラフ
+        const barContainer = document.createElement('div');
+        barContainer.className = 'member-interest-bar-container';
+        
+        const barTrack = document.createElement('div');
+        barTrack.className = 'member-interest-bar-track';
+        
+        const barFill = document.createElement('div');
+        barFill.className = 'member-interest-bar-fill';
+        barFill.style.width = `${interestPercent}%`;
+        
+        // 離脱メンバーのバーは赤色、それ以外はカテゴリの色
+        if (member.leftOut) {
+            barFill.style.background = '#ff4444';
+        } else {
+            barFill.style.background = CONFIG.dimensionColors[member.primaryInterestDim];
+        }
+        
+        barTrack.appendChild(barFill);
+        barContainer.appendChild(barTrack);
+        
+        // 興味度パーセンテージ
+        const interestSpan = document.createElement('span');
+        interestSpan.className = 'member-interest';
+        interestSpan.textContent = `${interestPercent.toFixed(1)}%`;
+        interestSpan.style.fontWeight = 'bold';
+        interestSpan.style.minWidth = '45px';
+        interestSpan.style.textAlign = 'right';
+        
+        // 離脱表示
+        if (member.leftOut) {
+            const leftOutSpan = document.createElement('span');
+            leftOutSpan.className = 'left-out-label';
+            leftOutSpan.textContent = '❄️';
+            leftOutSpan.style.marginLeft = '4px';
+            itemDiv.appendChild(idSpan);
+            itemDiv.appendChild(categorySpan);
+            itemDiv.appendChild(barContainer);
+            itemDiv.appendChild(interestSpan);
+            itemDiv.appendChild(leftOutSpan);
+        } else {
+            itemDiv.appendChild(idSpan);
+            itemDiv.appendChild(categorySpan);
+            itemDiv.appendChild(barContainer);
+            itemDiv.appendChild(interestSpan);
+        }
+        
+        container.appendChild(itemDiv);
+    });
+}
+
+/**
+ * 次元インデックスから3文字の略称を取得
+ */
+function getCategoryAbbreviation(dimIndex) {
+    const abbreviations = ['POL', 'TEC', 'SPO', 'SCI', 'REL', 'COM'];
+    return abbreviations[dimIndex] || 'UNK';
+}
+
+/**
+ * 離脱ログを更新
+ */
+function updateLeftOutLog() {
+    const currentLeftOutMembers = new Set();
+    
+    // 全グループの離脱メンバーを収集
+    groups.forEach(group => {
+        group.members.forEach(member => {
+            if (member.leftOut) {
+                const memberKey = `${group.id}-${member.memberId}`;
+                currentLeftOutMembers.add(memberKey);
+                
+                // 新しく離脱したメンバーを検出
+                if (!previousLeftOutMembers.has(memberKey)) {
+                    const category = getCategoryAbbreviation(member.primaryInterestDim);
+                    const topic = group.getCurrentTopic();
+                    const logEntry = {
+                        timestamp: frameCount,
+                        groupId: group.id,
+                        memberId: member.memberId,
+                        category: category,
+                        categoryDimIndex: member.primaryInterestDim,
+                        topic: topic ? topic.name : 'Unknown',
+                        vG: group.getGroupVelocity().toFixed(2),
+                        vI: member.currentVelocity.toFixed(2)
+                    };
+                    leftOutLog.push(logEntry);
+                    
+                    // ログが長すぎる場合は古いものを削除（最新50件を保持）
+                    if (leftOutLog.length > 50) {
+                        leftOutLog.shift();
+                    }
+                }
+            }
+        });
+    });
+    
+    previousLeftOutMembers = currentLeftOutMembers;
+    
+    // UIに表示
+    displayLeftOutLog();
+}
+
+/**
+ * 離脱ログをUIに表示
+ */
+function displayLeftOutLog() {
+    const container = document.getElementById('leftout-log');
+    if (!container) return;
+    
+    if (leftOutLog.length === 0) {
+        container.innerHTML = '<div style="color: #888; font-size: 0.7rem;">No members left out yet...</div>';
+        return;
+    }
+    
+    // 最新のログを上に表示（降順）
+    const recentLogs = [...leftOutLog].reverse().slice(0, 10);
+    
+    container.innerHTML = recentLogs.map(log => {
+        const time = Math.floor(log.timestamp / 60); // 秒単位に変換（60fps想定）
+        return `
+            <div class="leftout-log-entry">
+                <span class="leftout-time">${time}s</span>
+                <span class="leftout-group">G${log.groupId + 1}</span>
+                <span class="leftout-member">M${log.memberId + 1}</span>
+                <span class="leftout-category" style="color: ${CONFIG.dimensionColors[log.categoryDimIndex] || '#888'}">${log.category}</span>
+                <span class="leftout-topic">${log.topic.split('.').pop()}</span>
+                <span class="leftout-velocity">vG=${log.vG} vI=${log.vI}</span>
+            </div>
+        `;
+    }).join('');
+}
+
+/**
+ * グラフ凡例を更新
+ */
+function updateGraphLegend() {
+    const container = document.getElementById('graph-legend');
+    if (!container) return;
+    
+    const group = groups[PARAMS.selectedGroupId] || groups[0];
+    if (!group) return;
+    
+    container.innerHTML = '';
+    
+    // メンバーごとに凡例を作成
+    group.members.forEach((member, index) => {
+        const legendItem = document.createElement('div');
+        legendItem.className = 'legend-item';
+        
+        // 色の四角
+        const colorBox = document.createElement('div');
+        colorBox.className = 'legend-color-box';
+        colorBox.style.background = CONFIG.memberColors[member.memberId % CONFIG.memberColors.length];
+        
+        // メンバーID
+        const memberLabel = document.createElement('span');
+        memberLabel.className = 'legend-label';
+        memberLabel.textContent = `M${member.memberId + 1}`;
+        
+        // 離脱メンバーはグレーアウト
+        if (member.leftOut) {
+            legendItem.classList.add('legend-item-leftout');
+            colorBox.style.opacity = '0.5';
+            memberLabel.style.color = '#888';
+        }
+        
+        legendItem.appendChild(colorBox);
+        legendItem.appendChild(memberLabel);
+        container.appendChild(legendItem);
+    });
 }

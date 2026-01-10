@@ -45,7 +45,7 @@
    
    /* シミュレーション表示 */
    #simulation-canvas { background: #0f0f1a; border-radius: 6px; width: 100% !important; height: auto !important; }
-   #graph-canvas { background: #0f0f1a; border-radius: 6px; border: 1px solid #2a3a5e; width: 100%; height: 160px; }
+   #graph-canvas { background: #0f0f1a; border-radius: 6px; border: 1px solid #2a3a5e; width: 100%; height: 200px; }
    
    /* 統計とコントロール */
    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
@@ -87,12 +87,46 @@
        border-radius: 3px;
        font-size: 0.7rem;
    }
+   .member-item.left-out {
+       background: #3d1a1a;
+       opacity: 0.7;
+       color: #ff4444;
+   }
+   .member-item.left-out .member-id,
+   .member-item.left-out .member-interest {
+       color: #ff4444;
+   }
+   .member-id { font-weight: bold; min-width: 30px; }
+   .member-category { font-weight: bold; min-width: 35px; }
+   .member-interest-bar-container { flex: 1; margin: 0 8px; }
+   .member-interest-bar-track { 
+       height: 8px; 
+       background: #2a3a5e; 
+       border-radius: 4px; 
+       overflow: hidden;
+   }
+   .member-interest-bar-fill { 
+       height: 100%; 
+       border-radius: 4px; 
+       transition: width 0.2s ease;
+   }
+   .member-item.left-out .member-interest-bar-fill {
+       background: #ff4444 !important;
+   }
+   .member-interest { font-weight: bold; min-width: 45px; text-align: right; }
+   .left-out-label { margin-left: 4px; }
    
    /* トピック関連 */
    .dimension-bar { display: flex; align-items: center; margin-bottom: 3px; font-size: 0.65rem; }
-   .dimension-bar .label { width: 60px; }
+   .dimension-bar .label { width: 60px; font-weight: 500; }
    .dimension-bar .bar-track { flex: 1; height: 6px; background: #2a3a5e; margin: 0 5px; border-radius: 3px; }
    .dimension-bar .bar-fill { height: 100%; border-radius: 3px; }
+   .dimension-bar .value { min-width: 40px; text-align: right; font-size: 0.65rem; font-weight: 500; }
+   
+   .topic-card { margin-top: 6px; }
+   .topic-name { font-size: 0.75rem; font-weight: bold; color: #00d4ff; margin-bottom: 4px; }
+   .topic-category { font-size: 0.65rem; color: #888; margin-bottom: 6px; }
+   #topic-dimensions { margin-top: 6px; }
    
    .group-selector { display: flex; gap: 4px; margin-bottom: 8px; }
    .group-btn {
@@ -109,3 +143,56 @@
    .group-btn.g2 { background: #4ecdc4; color: white; }
    .group-btn.g3 { background: #95e86f; color: black; }
    .group-btn.g4 { background: #ffd93d; color: black; }
+   
+   /* Left-Out Log */
+   #leftout-log { 
+       max-height: 150px; 
+       overflow-y: auto; 
+       font-size: 0.65rem;
+   }
+   .leftout-log-entry {
+       display: flex;
+       align-items: center;
+       gap: 6px;
+       padding: 3px 4px;
+       margin-bottom: 2px;
+       background: #1a2744;
+       border-radius: 3px;
+       border-left: 2px solid #ff4444;
+   }
+   .leftout-time { color: #888; min-width: 30px; font-size: 0.6rem; }
+   .leftout-group { color: #00d4ff; font-weight: bold; min-width: 25px; }
+   .leftout-member { color: #ff4444; font-weight: bold; min-width: 30px; }
+   .leftout-category { font-weight: bold; min-width: 35px; }
+   .leftout-topic { color: #aaa; flex: 1; font-size: 0.6rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+   .leftout-velocity { color: #888; font-size: 0.6rem; min-width: 80px; text-align: right; }
+   
+   /* Graph Legend */
+   #graph-legend {
+       display: flex;
+       flex-wrap: wrap;
+       gap: 6px;
+       font-size: 0.65rem;
+   }
+   .legend-item {
+       display: flex;
+       align-items: center;
+       gap: 4px;
+       padding: 2px 4px;
+       background: #1a2744;
+       border-radius: 3px;
+   }
+   .legend-item-leftout {
+       opacity: 0.6;
+   }
+   .legend-color-box {
+       width: 12px;
+       height: 12px;
+       border-radius: 2px;
+       border: 1px solid rgba(255, 255, 255, 0.2);
+   }
+   .legend-label {
+       font-size: 0.65rem;
+       color: #eee;
+       font-weight: 500;
+   }

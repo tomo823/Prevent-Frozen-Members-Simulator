@@ -20,7 +20,7 @@ export default class GraphView {
     _setupHighDPI() {
         const dpr = window.devicePixelRatio || 1;
         const displayWidth = 640;
-        const displayHeight = 160;
+        const displayHeight = 200;
         this.graphCanvas.width = displayWidth * dpr;
         this.graphCanvas.height = displayHeight * dpr;
         this.ctx.scale(dpr, dpr);
@@ -175,31 +175,161 @@ export default class GraphView {
         const history = group.interestHistory;
         if (history.length < 2) return;
 
+        // 背景をクリア
         ctx.fillStyle = '#0f0f1a';
         ctx.fillRect(0, 0, W, H);
 
-        const margin = { left: 45, right: 15, top: 20, bottom: 25 };
+        const margin = { left: 50, right: 20, top: 25, bottom: 35 };
         const plotW = W - margin.left - margin.right;
         const plotH = H - margin.top - margin.bottom;
-        const maxY = CONFIG.groupSize * CONFIG.maxInterest;
+        const maxY = CONFIG.groupSize * CONFIG.maxInterest; // 全メンバーの興味の総和の最大値
 
-        // 背景グリッドと軸の描画（省略）...
-
-        // 積み上げ面グラフの描画
-        for (let m = CONFIG.groupSize - 1; m >= 0; m--) {
+        // グリッド線の描画
+        ctx.strokeStyle = '#2a3a5e';
+        ctx.lineWidth = 1;
+        
+        // 横方向のグリッド線（縦軸の目盛りに対応）
+        const yTicks = 5;
+        for (let i = 0; i <= yTicks; i++) {
+            const y = margin.top + (plotH / yTicks) * i;
             ctx.beginPath();
+            ctx.moveTo(margin.left, y);
+            ctx.lineTo(margin.left + plotW, y);
+            ctx.stroke();
+        }
+        
+        // 縦方向のグリッド線（横軸の目盛りに対応）
+        const xTicks = Math.min(history.length - 1, 10);
+        for (let i = 0; i <= xTicks; i++) {
+            const x = margin.left + (plotW / xTicks) * i;
+            ctx.beginPath();
+            ctx.moveTo(x, margin.top);
+            ctx.lineTo(x, margin.top + plotH);
+            ctx.stroke();
+        }
+
+        // 軸の描画
+        ctx.strokeStyle = '#4a5a7e';
+        ctx.lineWidth = 2;
+        
+        // 縦軸（左）
+        ctx.beginPath();
+        ctx.moveTo(margin.left, margin.top);
+        ctx.lineTo(margin.left, margin.top + plotH);
+        ctx.stroke();
+        
+        // 横軸（下）
+        ctx.beginPath();
+        ctx.moveTo(margin.left, margin.top + plotH);
+        ctx.lineTo(margin.left + plotW, margin.top + plotH);
+        ctx.stroke();
+
+        // 縦軸のラベル（興味度の値）
+        ctx.fillStyle = '#aaa';
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        for (let i = 0; i <= yTicks; i++) {
+            const value = maxY - (maxY / yTicks) * i;
+            const y = margin.top + (plotH / yTicks) * i;
+            ctx.fillText(value.toFixed(0), margin.left - 8, y);
+        }
+
+        // 横軸のラベル（時間/フレーム）
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        for (let i = 0; i <= xTicks; i++) {
+            const x = margin.left + (plotW / xTicks) * i;
+            const index = Math.floor((i / xTicks) * (history.length - 1));
+            ctx.fillText(index.toString(), x, margin.top + plotH + 8);
+        }
+
+        // 軸のタイトル
+        ctx.save();
+        ctx.translate(15, margin.top + plotH / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillStyle = '#00d4ff';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('Total Interest', 0, 0);
+        ctx.restore();
+
+        ctx.fillStyle = '#00d4ff';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText('Time (frames)', margin.left + plotW / 2, margin.top + plotH + 20);
+
+        // 積み上げ面グラフの描画（各メンバーを色分け）
+        
+        // 各メンバーの層を下から順に描画
+        for (let m = 0; m < CONFIG.groupSize; m++) {
+            ctx.beginPath();
+            let firstPoint = true;
+            const memberColor = CONFIG.memberColors[m % CONFIG.memberColors.length];
+            const isLeftOut = group.members[m] && group.members[m].leftOut;
+            
+            // 上端のパス（累積興味度）
+            const topPath = [];
             history.forEach((snap, i) => {
                 const x = margin.left + (i / (history.length - 1)) * plotW;
                 let cumulative = 0;
+                // m番目から最後までのメンバーの興味を累積
                 for (let j = m; j < CONFIG.groupSize; j++) {
-                    if (!snap[j].leftOut) cumulative += snap[j].interest;
+                    if (snap[j] && !snap[j].leftOut) {
+                        cumulative += snap[j].interest;
+                    }
                 }
                 const y = margin.top + plotH - (cumulative / maxY) * plotH;
-                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                topPath.push({ x, y });
+                
+                if (firstPoint) {
+                    ctx.moveTo(x, margin.top + plotH);
+                    ctx.lineTo(x, y);
+                    firstPoint = false;
+                } else {
+                    ctx.lineTo(x, y);
+                }
             });
-            // 下端を閉じるロジック（省略）...
-            ctx.fillStyle = CONFIG.memberColors[m] + '99';
+            
+            // 下端のパス（m+1番目以降の累積興味度）
+            let hasBottomData = false;
+            history.forEach((snap, i) => {
+                const x = margin.left + (i / (history.length - 1)) * plotW;
+                let cumulative = 0;
+                // m+1番目から最後までのメンバーの興味を累積
+                for (let j = m + 1; j < CONFIG.groupSize; j++) {
+                    if (snap[j] && !snap[j].leftOut) {
+                        cumulative += snap[j].interest;
+                    }
+                }
+                const y = margin.top + plotH - (cumulative / maxY) * plotH;
+                
+                if (i === history.length - 1) {
+                    ctx.lineTo(x, y);
+                    ctx.lineTo(x, margin.top + plotH);
+                    hasBottomData = true;
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+            
+            // パスを閉じる
+            ctx.closePath();
+            
+            // 離脱メンバーの場合は半透明に
+            if (isLeftOut) {
+                ctx.fillStyle = memberColor + '60'; // より透明に
+            } else {
+                ctx.fillStyle = memberColor + 'CC'; // 不透明
+            }
             ctx.fill();
+            
+            // 境界線を描画
+            ctx.strokeStyle = memberColor;
+            ctx.lineWidth = isLeftOut ? 1 : 1.5;
+            ctx.stroke();
         }
     }
 }

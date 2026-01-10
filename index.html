@@ -44,6 +44,11 @@
                 <h3>📜 Left-Out Log</h3>
                 <div id="leftout-log">Waiting...</div>
             </div>
+            
+            <div class="panel">
+                <h3>📊 Graph Legend</h3>
+                <div id="graph-legend"></div>
+            </div>
         </div>
         
         <div class="center-area">
@@ -58,18 +63,42 @@
                 <div class="stats-grid">
                     <div class="stat-item"><div class="value" id="total-active">0</div><div class="label">Active</div></div>
                     <div class="stat-item"><div class="value danger" id="total-leftout">0</div><div class="label">❄️ Frozen</div></div>
-                    <div class="stat-item"><div class="value" id="halted-count">0</div><div class="label">Halted</div></div>
+                    <div class="stat-item"><div class="value" id="halted-count">0</div><div class="label">Halted Groups</div></div>
                 </div>
             </div>
             
             <div class="panel">
-                <h3>⚙️ Parameters</h3>
+                <h3>🔍 Left-Out Detection</h3>
                 <div class="control-group">
                     <label>Threshold v₀</label>
                     <input type="range" id="threshold" min="0.3" max="3" value="1.0" step="0.1">
                     <div class="value" id="threshold-val">1.00</div>
                 </div>
+            </div>
+            
+            <div class="panel">
+                <h3>🐦 Boids Parameters</h3>
+                <div class="control-group">
+                    <label>Cohesion</label>
+                    <input type="range" id="cohesion" min="0" max="5" value="2.0" step="0.1">
+                    <div class="value" id="cohesion-val">2.00</div>
                 </div>
+                <div class="control-group">
+                    <label>Alignment</label>
+                    <input type="range" id="alignment" min="0" max="5" value="0.8" step="0.1">
+                    <div class="value" id="alignment-val">0.80</div>
+                </div>
+                <div class="control-group">
+                    <label>Separation</label>
+                    <input type="range" id="separation" min="0" max="5" value="1.0" step="0.1">
+                    <div class="value" id="separation-val">1.00</div>
+                </div>
+                <div class="control-group">
+                    <label>Interest Pull</label>
+                    <input type="range" id="interest-pull" min="0" max="2" value="0.5" step="0.05">
+                    <div class="value" id="interest-pull-val">0.50</div>
+                </div>
+            </div>
             
             <div class="panel">
                 <h3>🎮 Controls</h3>
