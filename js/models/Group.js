@@ -6,7 +6,7 @@
 import { CONFIG, PARAMS, NEWSGROUP_TOPICS } from '../config.js';
 import { arrangeTopicsByProjection } from '../utils.js';
 import Topic from './Topic.js';
-import Member from './member.js';
+import Member from './Member.js';
 
 export default class Group {
     /**
@@ -137,6 +137,25 @@ export default class Group {
     }
 
     /**
+     * 境界からの反発力
+     * @param {Member} m - メンバー
+     * @returns {p5.Vector} 反発力ベクトル
+     */
+    _boundaryRepulsion(m) {
+        let margin = 8;
+        let force = 0.08;
+        let b = this.bounds;
+        let repulsion = createVector(0, 0);
+
+        if (m.pos.x < b.x + margin) repulsion.add(createVector(force, 0));
+        if (m.pos.x > b.x + b.w - margin) repulsion.add(createVector(-force, 0));
+        if (m.pos.y < b.y + margin) repulsion.add(createVector(0, force));
+        if (m.pos.y > b.y + b.h - margin) repulsion.add(createVector(0, -force));
+
+        return repulsion;
+    }
+
+    /**
      * 重心の計算
      */
     _calculateCentroid() {
@@ -192,6 +211,7 @@ export default class Group {
         const ali = this._alignment(member);
         const sep = this._separation(member);
         const pull = this._getInterestPull(member);
+        const boundary = this._boundaryRepulsion(member);
         
         const interestNorm = member.getInterestNormalized();
 
@@ -205,6 +225,7 @@ export default class Group {
         member.applyForce(ali);
         member.applyForce(sep);
         member.applyForce(pull);
+        member.applyForce(boundary);
         
         // グループ全体の慣性（モメンタム）を適用
         const mom = this.momentum.copy().mult(PARAMS.momentumWeight * member.maxForce);

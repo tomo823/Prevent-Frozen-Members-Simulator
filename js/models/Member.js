@@ -104,7 +104,7 @@ export default class Member {
     }
 
     /**
-     * 特定のトピックに対する興味度を計算（式3: 内積）
+     * 現在の話題に対する興味度（スカラー値）を計算（式3: 内積）
      * @param {Topic} topic 
      */
     calculateInterest(topic) {
