@@ -1,0 +1,301 @@
+/**
+ * Groupクラス
+ * メンバーの集合とトピック空間を管理し、シミュレーションの集団挙動を制御する
+ */
+
+import { CONFIG, PARAMS, NEWSGROUP_TOPICS } from '../config.js';
+import { arrangeTopicsByProjection } from '../utils.js';
+import Topic from './Topic.js';
+import Member from './member.js';
+
+export default class Group {
+    /**
+     * @param {number} id - グループID
+     * @param {Object} bounds - 描画領域 {x, y, w, h}
+     */
+    constructor(id, bounds) {
+        this.id = id;
+        this.bounds = bounds;
+        this.color = CONFIG.groupColors[id];
+        
+        this.members = [];
+        this.topics = [];
+        this.currentTopicIndex = 0;
+        this.halted = false; // アクティブ人数不足による停止フラグ
+        
+        this.centroid = createVector(bounds.x + bounds.w / 2, bounds.y + bounds.h / 2);
+        this.prevCentroid = this.centroid.copy();
+        this.momentum = createVector(0, 0);
+        this.lastLeftOutCheck = 0;
+
+        // 履歴データ（グラフ描画用）
+        this.interestHistory = [];
+        this.topicHistory = [];
+
+        this._initTopics();
+        this._initMembers();
+        
+        // 初期状態の計算
+        this._updateMemberInterests();
+        this.recordInterestSnapshot();
+    }
+
+    /**
+     * トピックを類似度に基づいてグリッド配置し初期化
+     * @private
+     */
+    _initTopics() {
+        const gridCols = 5;
+        const gridRows = 4;
+        const arranged = arrangeTopicsByProjection(NEWSGROUP_TOPICS, gridCols, gridRows);
+        
+        this.topics = arranged.map((a, i) => new Topic(i, a.gridX, a.gridY, a.topic));
+    }
+
+    /**
+     * メンバーを初期配置
+     * @private
+     */
+    _initMembers() {
+        for (let i = 0; i < CONFIG.groupSize; i++) {
+            const member = new Member(this.id, i);
+            // グループの中央付近にランダム配置
+            member.pos = createVector(
+                this.centroid.x + (Math.random() - 0.5) * 50,
+                this.centroid.y + (Math.random() - 0.5) * 50
+            );
+            member.vel = p5.Vector.random2D().mult(0.2);
+            // モードに応じた速度パラメータを設定
+            member.maxSpeed = PARAMS.singleGroupMode ? 1.4 : 0.9;
+            member.maxForce = PARAMS.singleGroupMode ? 0.07 : 0.05;
+            
+            this.members.push(member);
+        }
+    }
+
+    /**
+     * Boidsロジック: 結合（Cohesion）
+     */
+    _cohesion(m) {
+        let steering = createVector(0, 0);
+        let count = 0;
+        let radius = PARAMS.singleGroupMode ? 80 : 50;
+        for (let other of this.members) {
+            let d = p5.Vector.dist(m.pos, other.pos);
+            if (other !== m && !other.leftOut && d < radius) {
+                steering.add(other.pos);
+                count++;
+            }
+        }
+        if (count > 0) {
+            steering.div(count).sub(m.pos).setMag(m.maxSpeed).sub(m.vel).limit(m.maxForce);
+        }
+        return steering;
+    }
+
+    /**
+     * Boidsロジック: 整列（Alignment）
+     */
+    _alignment(m) {
+        let steering = createVector(0, 0);
+        let count = 0;
+        let radius = PARAMS.singleGroupMode ? 65 : 40;
+        for (let other of this.members) {
+            let d = p5.Vector.dist(m.pos, other.pos);
+            if (other !== m && !other.leftOut && d < radius) {
+                steering.add(other.vel);
+                count++;
+            }
+        }
+        if (count > 0) {
+            steering.div(count).setMag(m.maxSpeed).sub(m.vel).limit(m.maxForce);
+        }
+        return steering;
+    }
+
+    /**
+     * Boidsロジック: 分離（Separation）
+     */
+    _separation(m) {
+        let steering = createVector(0, 0);
+        let radius = PARAMS.singleGroupMode ? 25 : 15;
+        for (let other of this.members) {
+            let d = p5.Vector.dist(m.pos, other.pos);
+            if (other !== m && d < radius && d > 0) {
+                let diff = p5.Vector.sub(m.pos, other.pos).div(d);
+                steering.add(diff);
+            }
+        }
+        return steering.limit(m.maxForce);
+    }
+
+    /**
+     * 興味による引力（Interest Pull）
+     */
+    _getInterestPull(m) {
+        return m.getPreferredDirection(this.topics, this.bounds, 5, 4);
+    }
+
+    /**
+     * 重心の計算
+     */
+    _calculateCentroid() {
+        let active = this.members.filter(m => !m.leftOut);
+        if (active.length > 0) {
+            let sum = createVector(0, 0);
+            active.forEach(m => sum.add(m.pos));
+            this.prevCentroid = this.centroid.copy();
+            this.centroid = sum.div(active.length);
+            
+            let delta = p5.Vector.sub(this.centroid, this.prevCentroid);
+            this.momentum.lerp(delta, 0.15);
+            if (this.momentum.mag() > 0.01) this.momentum.normalize();
+        }
+    }
+
+    /**
+     * シミュレーションの1ステップ更新
+     */
+    update() {
+        if (this.halted || PARAMS.paused) return;
+
+        // 1. 各トピックの冷却
+        this.topics.forEach(t => t.coolDown());
+
+        // 2. 定期的な離脱判定
+        if (frameCount - this.lastLeftOutCheck >= PARAMS.leftOutCheckFrequency) {
+            this._updateMemberInterests();
+            this._checkLeftOut();
+            this.lastLeftOutCheck = frameCount;
+        }
+
+        // 3. メンバー全員の物理挙動（相互作用）
+        this.members.forEach(m => {
+            if (m.leftOut) return;
+            this._applyFlocking(m);
+            m.update();
+            m.constrainToBounds(this.bounds);
+        });
+
+        // 4. グループ重心と現在のトピックの更新
+        this._calculateCentroid();
+        this._updateCurrentTopic();
+    }
+
+    /**
+     * Boidsアルゴリズム（相互作用）の適用
+     * @private
+     */
+    _applyFlocking(member) {
+        // 各種力の計算（Member.jsの実装を呼び出す、あるいはGroup側で計算）
+        const coh = this._cohesion(member);
+        const ali = this._alignment(member);
+        const sep = this._separation(member);
+        const pull = this._getInterestPull(member);
+        
+        const interestNorm = member.getInterestNormalized();
+
+        // パラメータに基づき重み付け
+        coh.mult(PARAMS.cohesionWeight * (0.4 + interestNorm * 0.6));
+        ali.mult(PARAMS.alignmentWeight * (0.4 + interestNorm * 0.6));
+        sep.mult(PARAMS.separationWeight);
+        pull.mult(PARAMS.interestPullWeight * member.maxForce * (0.3 + interestNorm * 0.7));
+
+        member.applyForce(coh);
+        member.applyForce(ali);
+        member.applyForce(sep);
+        member.applyForce(pull);
+        
+        // グループ全体の慣性（モメンタム）を適用
+        const mom = this.momentum.copy().mult(PARAMS.momentumWeight * member.maxForce);
+        member.applyForce(mom);
+    }
+
+    /**
+     * 現在のグループ重心から、滞在中のトピックを特定する
+     * @private
+     */
+    _updateCurrentTopic() {
+        const gridCols = 5;
+        const gridRows = 4;
+        const tileW = this.bounds.w / gridCols;
+        const tileH = this.bounds.h / gridRows;
+
+        const col = Math.floor((this.centroid.x - this.bounds.x) / tileW);
+        const row = Math.floor((this.centroid.y - this.bounds.y) / tileH);
+        
+        const newTopic = this.topics.find(t => t.gridX === col && t.gridY === row);
+
+        if (newTopic && newTopic.id !== this.currentTopicIndex) {
+            this.currentTopicIndex = newTopic.id;
+            newTopic.onEnter();
+            this._updateMemberInterests();
+            this.recordInterestSnapshot();
+            // TODO: main.js 側のトピック遷移カウントを増やす（コールバック等で対応）
+        }
+    }
+
+    /**
+     * 離脱メンバーのチェック（式7）
+     * @private
+     */
+    _checkLeftOut() {
+        const vG = this.getGroupVelocity();
+        this.members.forEach(m => {
+            if (!m.leftOut) {
+                if (vG - m.currentVelocity > PARAMS.leftOutThreshold) {
+                    m.leftOut = true;
+                    // TODO: ログ出力の仕組み
+                }
+            }
+        });
+
+        if (this.getActiveCount() < CONFIG.minActiveMembers) {
+            this.halted = true;
+        }
+    }
+
+    // --- ゲッター・統計用メソッド ---
+
+    getGroupVelocity() {
+        const active = this.members.filter(m => !m.leftOut);
+        return active.length > 0 
+            ? active.reduce((sum, m) => sum + m.currentVelocity, 0) / active.length 
+            : 0;
+    }
+
+    getActiveCount() { return this.members.filter(m => !m.leftOut).length; }
+    getLeftOutCount() { return this.members.filter(m => m.leftOut).length; }
+    getCurrentTopic() { return this.topics[this.currentTopicIndex]; }
+
+    /**
+     * グラフ用のデータを保存
+     */
+    recordInterestSnapshot() {
+        const snapshot = this.members.map(m => ({
+            interest: m.currentInterest,
+            leftOut: m.leftOut
+        }));
+        this.interestHistory.push(snapshot);
+        this.topicHistory.push(this.currentTopicIndex + 1);
+        if (this.interestHistory.length > 20) {
+            this.interestHistory.shift();
+            this.topicHistory.shift();
+        }
+    }
+
+    /**
+     * メンバー全員の興味度を最新トピックに合わせて更新
+     * @private
+     */
+    _updateMemberInterests() {
+        const topic = this.getCurrentTopic();
+        this.members.forEach(m => {
+            m.calculateInterest(topic);
+            m.calculateVelocity();
+        });
+    }
+
+    // 重心計算、およびBoidsの各ステアリング（coh, ali, sep, pull）の実装が続く...
+    // (分量節約のため内部ロジック詳細は省略しますが、元のコードをprivateメソッド化したものになります)
+}

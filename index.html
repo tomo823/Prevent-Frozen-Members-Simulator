@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swarm Intelligence Simulation</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+</head>
+<body>
+    <div class="header">
+        <h1>Swarm Intelligence: Dynamic Tracking of Members' Interests</h1>
+        <p>Group halts when &lt;3 active members • Graph shows interest fluctuation</p>
+    </div>
+    
+    <div class="main-container">
+        <div class="left-panel">
+            <div class="panel">
+                <h3>📍 Current Topic</h3>
+                <div class="group-selector">
+                    <button class="group-btn g1 active" data-group="0">G1</button>
+                    <button class="group-btn g2" data-group="1">G2</button>
+                    <button class="group-btn g3" data-group="2">G3</button>
+                    <button class="group-btn g4" data-group="3">G4</button>
+                </div>
+                <div class="topic-card">
+                    <div class="topic-name" id="topic-name">Loading...</div>
+                    <div class="topic-category" id="topic-category">-</div>
+                    <div id="topic-dimensions"></div>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <h3>👥 Members</h3>
+                <div class="equation-box">
+                    <strong>v<sub>G</sub></strong> = <span id="vg-display">0.00</span> | 
+                    <strong>v₀</strong> = <span id="v0-display">1.00</span><br>
+                    <span class="highlight">Frozen if: v<sub>G</sub> - v<sub>i</sub> > v₀</span>
+                </div>
+                <div id="member-list" class="member-list"></div>
+            </div>
+            
+            <div class="panel">
+                <h3>📜 Left-Out Log</h3>
+                <div id="leftout-log">Waiting...</div>
+            </div>
+        </div>
+        
+        <div class="center-area">
+            <div id="canvas-container"></div>
+            <div class="graph-title">📈 Members' Interest Fluctuation</div>
+            <canvas id="graph-canvas"></canvas>
+        </div>
+        
+        <div class="right-panel">
+            <div class="panel">
+                <h3>📊 Statistics</h3>
+                <div class="stats-grid">
+                    <div class="stat-item"><div class="value" id="total-active">0</div><div class="label">Active</div></div>
+                    <div class="stat-item"><div class="value danger" id="total-leftout">0</div><div class="label">❄️ Frozen</div></div>
+                    <div class="stat-item"><div class="value" id="halted-count">0</div><div class="label">Halted</div></div>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <h3>⚙️ Parameters</h3>
+                <div class="control-group">
+                    <label>Threshold v₀</label>
+                    <input type="range" id="threshold" min="0.3" max="3" value="1.0" step="0.1">
+                    <div class="value" id="threshold-val">1.00</div>
+                </div>
+                </div>
+            
+            <div class="panel">
+                <h3>🎮 Controls</h3>
+                <button class="btn btn-primary" id="mode-btn">Switch Mode</button>
+                <button class="btn btn-secondary" id="restart-btn">Restart</button>
+                <button class="btn btn-secondary" id="pause-btn">Pause</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

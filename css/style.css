@@ -1,0 +1,111 @@
+/* ============================================
+   CSS スタイル定義
+   ============================================ */
+   * { margin: 0; padding: 0; box-sizing: border-box; }
+
+   body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       background: #1a1a2e;
+       color: #eee;
+       min-height: 100vh;
+       padding: 10px;
+   }
+   
+   /* レイアウト */
+   .header { text-align: center; margin-bottom: 10px; }
+   .header h1 { font-size: 1.2rem; color: #00d4ff; }
+   .header p { font-size: 0.8rem; color: #888; }
+   
+   .main-container {
+       display: flex;
+       gap: 10px;
+       max-width: 1400px;
+       margin: 0 auto;
+   }
+   
+   .left-panel { width: 280px; display: flex; flex-direction: column; gap: 8px; }
+   .center-area { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+   .right-panel { width: 220px; display: flex; flex-direction: column; gap: 8px; }
+   
+   /* パネル装飾 */
+   .panel {
+       background: #16213e;
+       border-radius: 6px;
+       padding: 8px;
+       border: 1px solid #2a3a5e;
+   }
+   
+   .panel h3 {
+       color: #00d4ff;
+       font-size: 0.8rem;
+       margin-bottom: 6px;
+       border-bottom: 1px solid #2a3a5e;
+       padding-bottom: 4px;
+   }
+   
+   /* シミュレーション表示 */
+   #simulation-canvas { background: #0f0f1a; border-radius: 6px; width: 100% !important; height: auto !important; }
+   #graph-canvas { background: #0f0f1a; border-radius: 6px; border: 1px solid #2a3a5e; width: 100%; height: 160px; }
+   
+   /* 統計とコントロール */
+   .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+   .stat-item { background: #1a2744; padding: 5px; border-radius: 4px; text-align: center; }
+   .stat-item .value { font-size: 1rem; font-weight: bold; color: #00d4ff; }
+   .stat-item .value.danger { color: #ff4444; }
+   .stat-item .label { font-size: 0.6rem; color: #888; }
+   
+   .control-group { margin-bottom: 6px; }
+   .control-group label { display: block; font-size: 0.7rem; color: #aaa; }
+   .control-group input[type="range"] { width: 100%; margin: 4px 0; }
+   .control-group .value { text-align: right; font-size: 0.7rem; color: #00d4ff; }
+   
+   /* ボタン */
+   .btn {
+       width: 100%;
+       padding: 6px;
+       border: none;
+       border-radius: 4px;
+       cursor: pointer;
+       font-size: 0.75rem;
+       font-weight: 600;
+       margin-bottom: 4px;
+       transition: opacity 0.2s;
+   }
+   .btn:hover { opacity: 0.8; }
+   .btn-primary { background: #00d4ff; color: #111; }
+   .btn-secondary { background: #2a3a5e; color: #fff; }
+   
+   /* メンバーリスト */
+   .member-list { max-height: 200px; overflow-y: auto; }
+   .member-item {
+       display: flex;
+       align-items: center;
+       gap: 8px;
+       padding: 4px;
+       background: #1a2744;
+       margin-bottom: 2px;
+       border-radius: 3px;
+       font-size: 0.7rem;
+   }
+   
+   /* トピック関連 */
+   .dimension-bar { display: flex; align-items: center; margin-bottom: 3px; font-size: 0.65rem; }
+   .dimension-bar .label { width: 60px; }
+   .dimension-bar .bar-track { flex: 1; height: 6px; background: #2a3a5e; margin: 0 5px; border-radius: 3px; }
+   .dimension-bar .bar-fill { height: 100%; border-radius: 3px; }
+   
+   .group-selector { display: flex; gap: 4px; margin-bottom: 8px; }
+   .group-btn {
+       flex: 1;
+       padding: 4px;
+       border: 2px solid transparent;
+       border-radius: 4px;
+       font-size: 0.7rem;
+       font-weight: bold;
+       cursor: pointer;
+   }
+   .group-btn.active { border-color: white; }
+   .group-btn.g1 { background: #ff6b35; color: white; }
+   .group-btn.g2 { background: #4ecdc4; color: white; }
+   .group-btn.g3 { background: #95e86f; color: black; }
+   .group-btn.g4 { background: #ffd93d; color: black; }
