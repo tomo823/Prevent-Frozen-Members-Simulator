@@ -38,6 +38,9 @@ export default class Member {
      * @private
      */
     _generateLatentInterests() {
+        if (this.memberId === 0) {
+            return new Array(CONFIG.numDimensions).fill(0.4);
+        }
         let interests = new Array(CONFIG.numDimensions).fill(0);
         
         // 主要興味と副次興味をランダムに決定
