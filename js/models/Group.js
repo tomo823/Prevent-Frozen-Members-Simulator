@@ -23,7 +23,7 @@ export default class Group {
         this.members = [];
         this.topics = [];
         this.currentTopicIndex = 0;
-        // this.halted = false; // アクティブ人数不足による停止フラグ
+        this.halted = false; // アクティブ人数不足による停止フラグ
 
         this.windowCentroid = createVector(bounds.x + bounds.w / 2, bounds.y + bounds.h / 2);
         
@@ -166,6 +166,37 @@ export default class Group {
     }
 
     /**
+     * Boidsアルゴリズム（相互作用）の適用
+     * @private
+     */
+    _applyFlocking(member) {
+        // 各種力の計算（Member.jsの実装を呼び出す、あるいはGroup側で計算）
+        const coh = this._cohesion(member);
+        const ali = this._alignment(member);
+        const sep = this._separation(member);
+        const pull = this._getInterestPull(member);
+        const boundary = this._boundaryRepulsion(member);
+        
+        const interestNorm = member.getInterestNormalized();
+
+        // パラメータに基づき重み付け
+        coh.mult(PARAMS.cohesionWeight * (0.4 + interestNorm * 0.6));
+        ali.mult(PARAMS.alignmentWeight * (0.4 + interestNorm * 0.6));
+        sep.mult(PARAMS.separationWeight);
+        pull.mult(PARAMS.interestPullWeight * member.maxForce * (0.3 + interestNorm * 0.7));
+
+        member.applyForce(coh);
+        member.applyForce(ali);
+        member.applyForce(sep);
+        member.applyForce(pull);
+        member.applyForce(boundary);
+        
+        // グループ全体の慣性（モメンタム）を適用
+        const mom = this.momentum.copy().mult(PARAMS.momentumWeight * member.maxForce);
+        member.applyForce(mom);
+    }
+
+    /**
      * 重心の計算
      */
     _calculateCentroid() {
@@ -212,37 +243,6 @@ export default class Group {
     }
 
     /**
-     * Boidsアルゴリズム（相互作用）の適用
-     * @private
-     */
-    _applyFlocking(member) {
-        // 各種力の計算（Member.jsの実装を呼び出す、あるいはGroup側で計算）
-        const coh = this._cohesion(member);
-        const ali = this._alignment(member);
-        const sep = this._separation(member);
-        const pull = this._getInterestPull(member);
-        const boundary = this._boundaryRepulsion(member);
-        
-        const interestNorm = member.getInterestNormalized();
-
-        // パラメータに基づき重み付け
-        coh.mult(PARAMS.cohesionWeight * (0.4 + interestNorm * 0.6));
-        ali.mult(PARAMS.alignmentWeight * (0.4 + interestNorm * 0.6));
-        sep.mult(PARAMS.separationWeight);
-        pull.mult(PARAMS.interestPullWeight * member.maxForce * (0.3 + interestNorm * 0.7));
-
-        member.applyForce(coh);
-        member.applyForce(ali);
-        member.applyForce(sep);
-        member.applyForce(pull);
-        member.applyForce(boundary);
-        
-        // グループ全体の慣性（モメンタム）を適用
-        const mom = this.momentum.copy().mult(PARAMS.momentumWeight * member.maxForce);
-        member.applyForce(mom);
-    }
-
-    /**
      * 現在のグループ重心から、滞在中のトピックを特定する
      * @private
      */
@@ -265,7 +265,100 @@ export default class Group {
         }
     }
 
-/**
+    /**
+     * 現在のトピックの近傍トピック（類似度が高いもの）を取得する
+     * @param {number} threshold - 類似度のしきい値（例: 0.7）
+     * @returns {Topic[]}
+     */
+    getNeighborTopics(threshold = 0.5) {
+        const currentTopic = this.topics[this.currentTopicIndex];
+        if (!currentTopic) return [];
+
+        // 自分以外のトピックから、類似度が高いものを抽出
+        return this.topics.filter(t => {
+            if (t === currentTopic) return false;
+            const sim = currentTopic.getSimilarity(t);
+            return sim > threshold;
+        });
+    }
+
+    /**
+     * 条件を順番に満たす話題を選定し、誘導を行う
+     * @private
+     */
+    _applyMinMaxSteering() {
+        // 離脱候補者を抽出
+        const atRiskMembers = this.members.filter(m => m.state === Member.STATES.AT_RISK);
+        if (atRiskMembers.length === 0) return;
+
+        // --- 条件1: 現在のトピックの近傍話題であること ---
+        // 類似度が一定以上のトピックのみを候補にする
+        const neighborTopics = this.getNeighborTopics(PARAMS.neighborTopicsThreshold || 0.5);
+        if (neighborTopics.length === 0) {
+            this.halted = true;
+            console.warn('No neighbor topics found for Min-Max steering.');
+            return;
+        }
+
+        // --- 条件2: 離脱候補者がしきい値を超える興味を持つ話題に絞り込む ---
+        // ※ PARAMS.recoveryThreshold は、復帰に必要な興味レベル
+        const viableTopics = neighborTopics.filter(topic => {
+            return atRiskMembers.every(m => m.calculateInterest(topic) > PARAMS.recoveryThreshold);
+        });
+
+        // 候補がない場合は、現在の近傍の中から「最もマシなもの」を選ぶか、移動を諦める
+        if (viableTopics.length === 0) {
+            this.halted = true;
+            console.warn('No viable topics found for Min-Max steering.');
+            return;
+        }
+
+        // --- 条件3: メンバー全員の興味の「最低値」を「最大化」できる話題を選ぶ ---
+        let bestTopic = null;
+        let maxOfMinInterest = -1;
+
+        viableTopics.forEach(topic => {
+            // この話題に切り替えた場合、全メンバーの中で「一番興味が低い人」のスコアを調べる
+            const minInterestInGroup = Math.min(
+                ...this.members.map(m => m.calculateInterest(topic))
+            );
+
+            // その「最低スコア」が最も高くなる話題を採用する（これがMin-Max）
+            if (minInterestInGroup > maxOfMinInterest) {
+                maxOfMinInterest = minInterestInGroup;
+                bestTopic = topic;
+            }
+        });
+
+        // 誘導の実行
+        if (bestTopic) {
+            this._steerToTopic(bestTopic);
+        }
+    }
+
+    /**
+     * 特定のトピックへ重心を誘導する
+     * @param {Topic} targetTopic 
+     */
+    _steerToTopic(targetTopic) {
+        const targetPos = createVector(
+            this.bounds.x + (targetTopic.gridX + 0.5) * (this.bounds.w / 5),
+            this.bounds.y + (targetTopic.gridY + 0.5) * (this.bounds.h / 4)
+        );
+        
+        const steeringForce = p5.Vector.sub(targetPos, this.groupCentroid);
+        steeringForce.limit(0.1); 
+        this.groupCentroid.add(steeringForce);
+    }
+
+    getGroupVelocity() {
+        const active = this.members.filter(m => !m.leftOut);
+        return active.length > 0 
+            ? active.reduce((sum, m) => sum + m.currentVelocity, 0) / active.length 
+            : 0;
+    }
+
+    /**
      * メンバーの状態（離脱予兆・復帰）を一括管理する
      * @private
      */
@@ -281,14 +374,14 @@ export default class Group {
             // 現在の状態に応じて、次の状態を決める
             if (m.state === Member.STATES.ACTIVE) {
                 // 通常時：閾値を超えたら「リスクあり」へ
-                if (relativeVelocity > PARAMS.leftOutThreshold) {
+                if (relativeVelocity > PARAMS.recoveryThreshold) {
                     m.state = Member.STATES.AT_RISK;
                     // console.log(`Member ${m.memberId} is lagging behind.`);
                 }
             } 
             else if (m.state === Member.STATES.AT_RISK) {
                 // リスク時：閾値を下回ったら（追いついたら）「通常」へ
-                if (relativeVelocity <= PARAMS.leftOutThreshold) {
+                if (relativeVelocity <= PARAMS.recoveryThreshold) {
                     m.state = Member.STATES.ACTIVE;
                     // console.log(`Member ${m.memberId} recovered.`);
                 }
@@ -296,17 +389,21 @@ export default class Group {
         });
     }
 
-    // --- ゲッター・統計用メソッド ---
-
-    getGroupVelocity() {
-        const active = this.members.filter(m => !m.leftOut);
-        return active.length > 0 
-            ? active.reduce((sum, m) => sum + m.currentVelocity, 0) / active.length 
-            : 0;
+    /**
+     * メンバー全員の興味度を最新トピックに合わせて更新
+     * @private
+     */
+    _updateMemberInterests() {
+        const topic = this.getCurrentTopic();
+        this.members.forEach(m => {
+            m.calculateInterest(topic);
+            m.calculateVelocity();
+        });
     }
 
-    getActiveCount() { return this.members.filter(m => !m.leftOut).length; }
-    getLeftOutCount() { return this.members.filter(m => m.leftOut).length; }
+    getActiveCount() { return this.members.filter(m => m.state === Member.STATES.ACTIVE).length; }
+    getAtRiskCount() { return this.members.filter(m => m.state === Member.STATES.AT_RISK).length; }
+    getLeftOutCount() { return this.members.filter(m => m.state === Member.STATES.LEFT_OUT).length; }
     getCurrentTopic() { return this.topics[this.currentTopicIndex]; }
 
     /**
@@ -323,17 +420,5 @@ export default class Group {
             this.interestHistory.shift();
             this.topicHistory.shift();
         }
-    }
-
-    /**
-     * メンバー全員の興味度を最新トピックに合わせて更新
-     * @private
-     */
-    _updateMemberInterests() {
-        const topic = this.getCurrentTopic();
-        this.members.forEach(m => {
-            m.calculateInterest(topic);
-            m.calculateVelocity();
-        });
     }
 }

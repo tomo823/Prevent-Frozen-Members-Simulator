@@ -34,8 +34,12 @@ export const PARAMS = {
     separationWeight: 1.0,
     interestPullWeight: 0.5,
     
-    // 離脱判定
-    leftOutThreshold: 0.07,      // v0
+    // 離脱予兆判定
+    recoveryThreshold: 0.07,    // v0
+    leftOutThreshold: 0.12,     // v1
+
+    // 近傍話題の類似度閾値
+    neighborTopicsThreshold: 0.5,
     leftOutCheckFrequency: 45,  // フレーム数
     
     // その他

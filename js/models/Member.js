@@ -46,38 +46,32 @@ export default class Member {
     /**
      * 潜在的な興味ベクトル（W_i）を生成する
      * 20次元すべてに乱数を割り当てて正規化する
+     * @param {number[]|null} maxInterests - 他のメンバーの各次元の最大値（ID 9用）
      * @private
      */
     _generateLatentInterests() {
         let interests;
-        
-        // memberId === 0の場合はすべての次元に平等な興味を持つ
-        if (this.memberId === 0) {
-            interests = new Array(CONFIG.numDimensions).fill(1.0 / CONFIG.numDimensions);
-        } else {
-            interests = new Array(CONFIG.numDimensions)
+        let maxInterests = null;
 
-            // 主要興味（最も興味のある次元）をランダムに選択
+        // IDが9（最後の人）かつ、集計データがある場合
+        if (this.memberId === 9 && maxInterests) {
+            return maxInterests;
+        } 
+        else {
+            // ID 0〜8：特定の分野に強い興味を持つランダム生成
+            interests = new Array(CONFIG.numDimensions);
             this.primaryInterest = Math.floor(random(CONFIG.numDimensions));
-            // 副次興味（2番目に興味のある次元）
-            // this.secondaryInterest = (this.primaryInterest + Math.floor(random(1, CONFIG.numDimensions))) % CONFIG.numDimensions;
-            
-            // 各次元の興味レベルを設定
+
             for (let k = 0; k < CONFIG.numDimensions; k++) {
-                if (k === this.primaryInterest) {
-                    // 主要興味: 50-70%
-                    interests[k] = 0.50 + Math.random() * 0.20;
-                } else {
-                    // その他: 2-10%
-                    interests[k] = 0.02 + Math.random() * 0.08;
-                }
+                interests[k] = (k === this.primaryInterest) 
+                    ? 0.50 + Math.random() * 0.20 
+                    : 0.02 + Math.random() * 0.08;
             }
             const sum = interests.reduce((a, b) => a + b, 0);
             interests = interests.map(v => v / sum);
-            
-            // 最も興味が高い次元を主要興味として設定（表示用）
-            this.primaryInterestDim = interests.indexOf(Math.max(...interests));
-            }
+        }
+
+        this.primaryInterestDim = interests.indexOf(Math.max(...interests));
         return interests;
     }
 

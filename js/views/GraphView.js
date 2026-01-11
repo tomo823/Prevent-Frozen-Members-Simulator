@@ -100,7 +100,6 @@ export default class GraphView {
             textAlign(CENTER);
             fill(255, 60, 60);
             noStroke();
-            text("⚠️", 0, -size - 5);
             pop();
         }
 
