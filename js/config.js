@@ -4,7 +4,7 @@
  */
 
 export const CONFIG = {
-    groupSize: 10,
+    groupSize: 3,
     numGroups: 4,
     numDimensions: 20,
 
@@ -35,7 +35,7 @@ export const PARAMS = {
     interestPullWeight: 0.5,
     
     // 離脱判定
-    leftOutThreshold: 1.0,      // v0
+    leftOutThreshold: 0.07,      // v0
     leftOutCheckFrequency: 45,  // フレーム数
     
     // その他

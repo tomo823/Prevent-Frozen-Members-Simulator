@@ -45,20 +45,29 @@ export default class Member {
         if (this.memberId === 0) {
             interests = new Array(CONFIG.numDimensions).fill(1.0 / CONFIG.numDimensions);
         } else {
-            // すべての次元に乱数を割り当て
-            interests = new Array(CONFIG.numDimensions);
-            for (let k = 0; k < CONFIG.numDimensions; k++) {
-                interests[k] = Math.random();
-            }
+            interests = new Array(CONFIG.numDimensions)
+
+            // 主要興味（最も興味のある次元）をランダムに選択
+            this.primaryInterest = Math.floor(random(CONFIG.numDimensions));
+            // 副次興味（2番目に興味のある次元）
+            // this.secondaryInterest = (this.primaryInterest + Math.floor(random(1, CONFIG.numDimensions))) % CONFIG.numDimensions;
             
-            // 合計が1になるよう正規化
+            // 各次元の興味レベルを設定
+            for (let k = 0; k < CONFIG.numDimensions; k++) {
+                if (k === this.primaryInterest) {
+                    // 主要興味: 50-70%
+                    interests[k] = 0.50 + Math.random() * 0.20;
+                } else {
+                    // その他: 2-10%
+                    interests[k] = 0.02 + Math.random() * 0.08;
+                }
+            }
             const sum = interests.reduce((a, b) => a + b, 0);
             interests = interests.map(v => v / sum);
-        }
-        
-        // 最も興味が高い次元を主要興味として設定（表示用）
-        this.primaryInterestDim = interests.indexOf(Math.max(...interests));
-        
+            
+            // 最も興味が高い次元を主要興味として設定（表示用）
+            this.primaryInterestDim = interests.indexOf(Math.max(...interests));
+            }
         return interests;
     }
 
