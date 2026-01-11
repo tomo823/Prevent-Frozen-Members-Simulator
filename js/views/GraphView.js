@@ -4,6 +4,7 @@
  */
 
 import { CONFIG, PARAMS } from '../config.js';
+import Member from '../models/Member.js';
 
 export default class GraphView {
     constructor() {
@@ -67,41 +68,57 @@ export default class GraphView {
         this._drawGroupLabels(group, scaleFactor);
     }
 
-    /**
-     * 個々のメンバー（三角形または凍結アイコン）を描画
+/**
+     * 個々のメンバー（三角形）を描画
      * @private
      */
     _drawMember(member, scaleFactor) {
         push();
         translate(member.pos.x, member.pos.y);
 
-        if (member.leftOut) {
-            // 離脱メンバー（❄️）
-            let pulse = sin(frameCount * 0.12) * 3 + 14 * scaleFactor;
-            fill(255, 60, 60, 40);
-            noStroke();
-            ellipse(0, 0, pulse + 8 * scaleFactor, pulse + 8 * scaleFactor);
-            fill(70, 70, 80);
-            stroke(255, 80, 80);
-            strokeWeight(2);
-            ellipse(0, 0, pulse, pulse);
-            // 簡易的なバツ印
-            stroke(255, 120, 120);
-            line(-3, -3, 3, 3); line(-3, 3, 3, -3);
-        } else {
-            // アクティブメンバー（三角形）
-            const interestNorm = member.getInterestNormalized();
-            const size = map(interestNorm, 0, 1, 4, 10) * scaleFactor;
-            const brightness = map(interestNorm, 0, 1, 0.35, 1.0);
-            
-            if (member.vel.mag() > 0.05) rotate(member.vel.heading());
+        // --- 共通の計算を先に行う ---
+        const interestNorm = member.getInterestNormalized();
+        const size = map(interestNorm, 0, 1, 4, 10) * scaleFactor;
+        const brightness = map(interestNorm, 0, 1, 0.35, 1.0);
+        const c = color(member.color);
 
-            const c = color(member.color);
-            fill(red(c) * brightness + 30, green(c) * brightness + 30, blue(c) * brightness + 30, 220);
-            stroke(c);
-            strokeWeight(1.5 * scaleFactor);
-            triangle(size, 0, -size * 0.5, size * 0.5, -size * 0.5, -size * 0.5);
+        // --- 状態に応じた描画 ---
+        
+        // 1. AT_RISK（離脱予兆）の場合
+        if (member.state === Member.STATES.AT_RISK) {
+            // 赤いパルス（脈動）エフェクト
+            let pulse = sin(frameCount * 0.15) * 4 + 12 * scaleFactor;
+            noFill();
+            stroke(255, 60, 60, 150);
+            strokeWeight(2 * scaleFactor);
+            ellipse(0, 0, pulse, pulse);
+            
+            // 警告マークの表示（共通計算した size を使用）
+            push();
+            rotate(-member.vel.heading()); 
+            textSize(10 * scaleFactor);
+            textAlign(CENTER);
+            fill(255, 60, 60);
+            noStroke();
+            text("⚠️", 0, -size - 5);
+            pop();
         }
+
+        // 2. メンバー本体（三角形）の描画（ACTIVE でも AT_RISK でも描画する）
+        if (member.vel.mag() > 0.05) rotate(member.vel.heading());
+
+        // 本体の色設定
+        fill(red(c) * brightness + 30, green(c) * brightness + 30, blue(c) * brightness + 30, 220);
+        stroke(c);
+        strokeWeight(1.5 * scaleFactor);
+
+        // AT_RISK なら輪郭を少し赤く強調
+        if (member.state === Member.STATES.AT_RISK) {
+            stroke(255, 100, 100);
+        }
+
+        triangle(size, 0, -size * 0.5, size * 0.5, -size * 0.5, -size * 0.5);
+
         pop();
     }
 

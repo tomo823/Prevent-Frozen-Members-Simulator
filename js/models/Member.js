@@ -10,6 +10,14 @@ export default class Member {
      * @param {number} groupId - 所属グループID
      * @param {number} memberId - グループ内での一意のID
      */
+
+    // 状態の定義
+    static STATES = {
+        ACTIVE: 'active',   // 興味が閾値以上
+        AT_RISK: 'at_risk', // 興味が閾値未満（検知状態）
+        LEFT_OUT: 'left_out' // 完全に離脱（停止状態など）
+    };
+
     constructor(groupId, memberId) {
         this.groupId = groupId;
         this.memberId = memberId;
@@ -23,7 +31,9 @@ export default class Member {
         
         this.maxSpeed = 0; // モードによって動的に変化
         this.maxForce = 0;
-        this.leftOut = false; // 離脱状態
+
+        // 状態管理（初期状態はACTIVE）
+        this.state = Member.STATES.ACTIVE;
         
         // 興味プロファイル（潜在興味ベクトル）の初期化
         this.latentInterests = this._generateLatentInterests();
@@ -173,5 +183,9 @@ export default class Member {
         if (this.leftOut) return;
         this.pos.x = constrain(this.pos.x, bounds.x + 5, bounds.x + bounds.w - 5);
         this.pos.y = constrain(this.pos.y, bounds.y + 5, bounds.y + bounds.h - 5);
+    }
+
+    get isActive() {
+        return this.state === Member.STATES.ACTIVE;
     }
 }

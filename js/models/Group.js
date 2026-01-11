@@ -23,10 +23,12 @@ export default class Group {
         this.members = [];
         this.topics = [];
         this.currentTopicIndex = 0;
-        this.halted = false; // アクティブ人数不足による停止フラグ
+        // this.halted = false; // アクティブ人数不足による停止フラグ
+
+        this.windowCentroid = createVector(bounds.x + bounds.w / 2, bounds.y + bounds.h / 2);
         
-        this.centroid = createVector(bounds.x + bounds.w / 2, bounds.y + bounds.h / 2);
-        this.prevCentroid = this.centroid.copy();
+        this.groupCentroid = this.windowCentroid.copy();
+        this.prevCentroid = this.groupCentroid.copy();
         this.momentum = createVector(0, 0);
         this.lastLeftOutCheck = 0;
 
@@ -69,8 +71,8 @@ export default class Group {
             const member = new Member(this.id, i);
             // グループの中央付近にランダム配置
             member.pos = createVector(
-                this.centroid.x + (Math.random() - 0.5) * 50,
-                this.centroid.y + (Math.random() - 0.5) * 50
+                this.windowCentroid.x + (Math.random() - 0.5) * 50,
+                this.windowCentroid.y + (Math.random() - 0.5) * 50
             );
             member.vel = p5.Vector.random2D().mult(0.2);
             // モードに応じた速度パラメータを設定
@@ -167,17 +169,17 @@ export default class Group {
      * 重心の計算
      */
     _calculateCentroid() {
-        let active = this.members.filter(m => !m.leftOut);
-        if (active.length > 0) {
-            let sum = createVector(0, 0);
-            active.forEach(m => sum.add(m.pos));
-            this.prevCentroid = this.centroid.copy();
-            this.centroid = sum.div(active.length);
-            
-            let delta = p5.Vector.sub(this.centroid, this.prevCentroid);
-            this.momentum.lerp(delta, 0.15);
-            if (this.momentum.mag() > 0.01) this.momentum.normalize();
-        }
+        const activeMembers = this.members.filter(m => m.isActive);
+        if (activeMembers.length === 0) return;
+
+        let sum = createVector(0, 0);
+        activeMembers.forEach(m => sum.add(m.pos));
+        this.prevGroupCentroid = this.groupCentroid.copy();
+        this.groupCentroid = sum.div(activeMembers.length);
+        
+        let delta = p5.Vector.sub(this.groupCentroid, this.prevGroupCentroid);
+        this.momentum.lerp(delta, 0.15);
+        if (this.momentum.mag() > 0.01) this.momentum.normalize();
     }
 
     /**
@@ -192,7 +194,7 @@ export default class Group {
         // 2. 定期的な離脱判定
         if (frameCount - this.lastLeftOutCheck >= PARAMS.leftOutCheckFrequency) {
             this._updateMemberInterests();
-            this._checkLeftOut();
+            this._handleMemberStates();
             this.lastLeftOutCheck = frameCount;
         }
 
@@ -250,8 +252,8 @@ export default class Group {
         const tileW = this.bounds.w / gridCols;
         const tileH = this.bounds.h / gridRows;
 
-        const col = Math.floor((this.centroid.x - this.bounds.x) / tileW);
-        const row = Math.floor((this.centroid.y - this.bounds.y) / tileH);
+        const col = Math.floor((this.groupCentroid.x - this.bounds.x) / tileW);
+        const row = Math.floor((this.groupCentroid.y - this.bounds.y) / tileH);
         
         const newTopic = this.topics.find(t => t.gridX === col && t.gridY === row);
 
@@ -260,28 +262,38 @@ export default class Group {
             newTopic.onEnter();
             this._updateMemberInterests();
             this.recordInterestSnapshot();
-            // TODO: main.js 側のトピック遷移カウントを増やす（コールバック等で対応）
         }
     }
 
-    /**
-     * 離脱メンバーのチェック（式7）
+/**
+     * メンバーの状態（離脱予兆・復帰）を一括管理する
      * @private
      */
-    _checkLeftOut() {
+    _handleMemberStates() {
+        // 重心速度を一度だけ計算して変数に入れる
         const vG = this.getGroupVelocity();
+        
+        // メンバー全員を一人ずつチェック
         this.members.forEach(m => {
-            if (!m.leftOut) {
-                if (vG - m.currentVelocity > PARAMS.leftOutThreshold) {
-                    m.leftOut = true;
-                    // TODO: ログ出力の仕組み
+            // グループ速度との差（後退速度）を計算
+            const relativeVelocity = vG - m.currentVelocity;
+
+            // 現在の状態に応じて、次の状態を決める
+            if (m.state === Member.STATES.ACTIVE) {
+                // 通常時：閾値を超えたら「リスクあり」へ
+                if (relativeVelocity > PARAMS.leftOutThreshold) {
+                    m.state = Member.STATES.AT_RISK;
+                    // console.log(`Member ${m.memberId} is lagging behind.`);
+                }
+            } 
+            else if (m.state === Member.STATES.AT_RISK) {
+                // リスク時：閾値を下回ったら（追いついたら）「通常」へ
+                if (relativeVelocity <= PARAMS.leftOutThreshold) {
+                    m.state = Member.STATES.ACTIVE;
+                    // console.log(`Member ${m.memberId} recovered.`);
                 }
             }
         });
-
-        if (this.getActiveCount() < CONFIG.minActiveMembers) {
-            this.halted = true;
-        }
     }
 
     // --- ゲッター・統計用メソッド ---
@@ -324,7 +336,4 @@ export default class Group {
             m.calculateVelocity();
         });
     }
-
-    // 重心計算、およびBoidsの各ステアリング（coh, ali, sep, pull）の実装が続く...
-    // (分量節約のため内部ロジック詳細は省略しますが、元のコードをprivateメソッド化したものになります)
 }

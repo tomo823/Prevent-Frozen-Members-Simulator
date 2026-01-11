@@ -29,20 +29,22 @@ async function loadTopicsData() {
     }
 }
 
-/**
- * p5.js 初期化
- */
 window.setup = async () => {
     const canvas = createCanvas(640, 320);
     canvas.parent('canvas-container');
     canvas.id('simulation-canvas');
 
-    // topics.jsonを読み込んでから初期化
+    // 描画ループを一時停止
+    noLoop(); 
+
     await loadTopicsData();
     
     view = new GraphView();
     initSimulation();
     setupEventListeners();
+
+    // 全ての準備ができたら描画ループを再開
+    loop(); 
 };
 
 /**
@@ -85,6 +87,9 @@ function initSimulation() {
  * p5.js メインループ
  */
 window.draw = () => {
+// 【重要】viewが準備できていなければ、このフレームの処理をすべてスキップする
+    if (!view) return; 
+
     // 1. Modelの更新
     if (!PARAMS.paused) {
         groups.forEach(g => g.update());
