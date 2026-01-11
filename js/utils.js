@@ -22,17 +22,17 @@ export function projectTo2D(vector) {
 
 /**
  * トピックをベクトル類似度（2D射影）に基づいてグリッドに配置する
- * @param {Object[]} topics - NEWSGROUP_TOPICSの配列
+ * @param {Object[]} topics - topics.jsonの配列（name, vectorを含む）
  * @param {number} cols - グリッド列数
  * @param {number} rows - グリッド行数
  * @returns {Object[]} 配置情報が付与されたトピック配列
  */
 export function arrangeTopicsByProjection(topics, cols, rows) {
-    // 1. 全トピックを2Dに射影
+    // 1. 全トピックを2Dに射影（grid_posは使わず、vectorから計算）
     let projected = topics.map((t, i) => ({
         originalIndex: i, 
         topic: t, 
-        pos: projectTo2D(t.weights)
+        pos: projectTo2D(t.vector)
     }));
     
     // 2. 座標の正規化

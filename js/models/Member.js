@@ -35,31 +35,31 @@ export default class Member {
 
     /**
      * 潜在的な興味ベクトル（W_i）を生成する
+     * 20次元すべてに乱数を割り当てて正規化する
      * @private
      */
     _generateLatentInterests() {
-        if (this.memberId === 0) {
-            return new Array(CONFIG.numDimensions).fill(0.4);
-        }
-        let interests = new Array(CONFIG.numDimensions).fill(0);
+        let interests;
         
-        // 主要興味と副次興味をランダムに決定
-        this.primaryInterestDim = Math.floor(Math.random() * CONFIG.numDimensions);
-        this.secondaryInterestDim = (this.primaryInterestDim + 1 + Math.floor(Math.random() * (CONFIG.numDimensions - 1))) % CONFIG.numDimensions;
-
-        for (let k = 0; k < CONFIG.numDimensions; k++) {
-            if (k === this.primaryInterestDim) {
-                interests[k] = 0.45 + Math.random() * 0.15;
-            } else if (k === this.secondaryInterestDim) {
-                interests[k] = 0.15 + Math.random() * 0.12;
-            } else {
-                interests[k] = 0.02 + Math.random() * 0.08;
+        // memberId === 0の場合はすべての次元に平等な興味を持つ
+        if (this.memberId === 0) {
+            interests = new Array(CONFIG.numDimensions).fill(1.0 / CONFIG.numDimensions);
+        } else {
+            // すべての次元に乱数を割り当て
+            interests = new Array(CONFIG.numDimensions);
+            for (let k = 0; k < CONFIG.numDimensions; k++) {
+                interests[k] = Math.random();
             }
+            
+            // 合計が1になるよう正規化
+            const sum = interests.reduce((a, b) => a + b, 0);
+            interests = interests.map(v => v / sum);
         }
-
-        // 合計が1になるよう正規化
-        const sum = interests.reduce((a, b) => a + b, 0);
-        return interests.map(v => v / sum);
+        
+        // 最も興味が高い次元を主要興味として設定（表示用）
+        this.primaryInterestDim = interests.indexOf(Math.max(...interests));
+        
+        return interests;
     }
 
     /**

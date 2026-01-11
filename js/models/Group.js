@@ -3,7 +3,7 @@
  * メンバーの集合とトピック空間を管理し、シミュレーションの集団挙動を制御する
  */
 
-import { CONFIG, PARAMS, NEWSGROUP_TOPICS } from '../config.js';
+import { CONFIG, PARAMS } from '../config.js';
 import { arrangeTopicsByProjection } from '../utils.js';
 import Topic from './Topic.js';
 import Member from './Member.js';
@@ -12,11 +12,13 @@ export default class Group {
     /**
      * @param {number} id - グループID
      * @param {Object} bounds - 描画領域 {x, y, w, h}
+     * @param {Object[]} topicsData - topics.jsonから読み込んだデータ
      */
-    constructor(id, bounds) {
+    constructor(id, bounds, topicsData) {
         this.id = id;
         this.bounds = bounds;
         this.color = CONFIG.groupColors[id];
+        this.topicsData = topicsData; // topics.jsonのデータを保存
         
         this.members = [];
         this.topics = [];
@@ -45,11 +47,17 @@ export default class Group {
      * @private
      */
     _initTopics() {
+        if (!this.topicsData) {
+            console.error('Topics data not provided to Group');
+            this.topics = [];
+            return;
+        }
+        
         const gridCols = 5;
         const gridRows = 4;
-        const arranged = arrangeTopicsByProjection(NEWSGROUP_TOPICS, gridCols, gridRows);
+        const arranged = arrangeTopicsByProjection(this.topicsData, gridCols, gridRows);
         
-        this.topics = arranged.map((a, i) => new Topic(i, a.gridX, a.gridY, a.topic));
+        this.topics = arranged.map((a, i) => new Topic(a.topic.id, a.gridX, a.gridY, a.topic));
     }
 
     /**

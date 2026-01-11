@@ -10,16 +10,17 @@ export default class Topic {
      * @param {number} id - ユニークなトピックID
      * @param {number} gridX - グリッド上のX座標
      * @param {number} gridY - グリッド上のY座標
-     * @param {Object} newsgroup - 元データ（name, weights）
+     * @param {Object} topicData - 元データ（name, vector）
      */
-    constructor(id, gridX, gridY, newsgroup) {
+    constructor(id, gridX, gridY, topicData) {
         this.id = id;
         this.gridX = gridX;
         this.gridY = gridY;
-        this.name = newsgroup.name;
+        this.name = topicData.name;
         
         // トピックベクトル Tn の生成と初期化
-        this.vector = this._generateVector(newsgroup.weights);
+        // topics.jsonのvectorデータを直接使用（既に正規化されている）
+        this.vector = this._normalizeVector(topicData.vector);
         
         // 最も重みが大きい次元（メインテーマ）のインデックス
         this.primaryDim = this.vector.indexOf(Math.max(...this.vector));
@@ -30,18 +31,16 @@ export default class Topic {
     }
 
     /**
-     * 元の重みにランダムな揺らぎを加え、合計が1になるよう正規化する（内部メソッド）
+     * ベクトルを正規化する（合計が1になるように）
      * @private
      */
-    _generateVector(baseWeights) {
-        let varied = baseWeights.map(w => {
-            // 元の重みに ±0.025 の変動を加える
-            let v = w + (Math.random() - 0.5) * 0.05;
-            return Math.max(0.01, Math.min(0.95, v));
-        });
-
-        const sum = varied.reduce((a, b) => a + b, 0);
-        return varied.map(v => v / sum);
+    _normalizeVector(vector) {
+        const sum = vector.reduce((a, b) => a + b, 0);
+        if (sum === 0) {
+            // ゼロベクトルの場合は均等に分配
+            return new Array(vector.length).fill(1.0 / vector.length);
+        }
+        return vector.map(v => v / sum);
     }
 
     /**

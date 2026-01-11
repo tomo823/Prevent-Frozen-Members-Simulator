@@ -13,15 +13,33 @@ let view;
 let totalTopicChanges = 0;
 let leftOutLog = [];
 let previousLeftOutMembers = new Set(); // 前回のチェック時の離脱メンバーIDを記録
+let topicsData = null; // topics.jsonから読み込んだデータ
+
+/**
+ * topics.jsonを読み込む
+ */
+async function loadTopicsData() {
+    try {
+        const response = await fetch('data/topics/topics.json');
+        topicsData = await response.json();
+        return topicsData;
+    } catch (error) {
+        console.error('Failed to load topics.json:', error);
+        return null;
+    }
+}
 
 /**
  * p5.js 初期化
  */
-window.setup = () => {
+window.setup = async () => {
     const canvas = createCanvas(640, 320);
     canvas.parent('canvas-container');
     canvas.id('simulation-canvas');
 
+    // topics.jsonを読み込んでから初期化
+    await loadTopicsData();
+    
     view = new GraphView();
     initSimulation();
     setupEventListeners();
@@ -31,6 +49,11 @@ window.setup = () => {
  * シミュレーションの再初期化
  */
 function initSimulation() {
+    if (!topicsData) {
+        console.error('Topics data not loaded yet');
+        return;
+    }
+    
     groups = [];
     totalTopicChanges = 0;
     leftOutLog = [];
@@ -44,7 +67,7 @@ function initSimulation() {
         groups.push(new Group(0, { 
             x: padding, y: padding, 
             w: width - padding * 2, h: height - padding * 2 
-        }));
+        }, topicsData));
     } else {
         // 4グループモード
         const gw = (width - padding * 2 - gap) / 2;
@@ -52,7 +75,7 @@ function initSimulation() {
         for (let i = 0; i < 4; i++) {
             const x = padding + (i % 2) * (gw + gap);
             const y = padding + Math.floor(i / 2) * (gh + gap);
-            groups.push(new Group(i, { x, y, w: gw, h: gh }));
+            groups.push(new Group(i, { x, y, w: gw, h: gh }, topicsData));
         }
     }
     updateUIStatic();
@@ -160,9 +183,6 @@ function updateUIDynamic() {
     document.getElementById('vg-display').textContent = group.getGroupVelocity().toFixed(2);
     document.getElementById('v0-display').textContent = PARAMS.leftOutThreshold.toFixed(2);
     
-    // 次元情報の表示
-    updateTopicDimensions(topic);
-    
     // メンバーリストの表示
     updateMemberList(group, topic);
     
@@ -175,54 +195,6 @@ function updateUIDynamic() {
 
 function updateUIStatic() {
     // モードによってボタンの表示/非表示を切り替えるなどの処理
-}
-
-/**
- * トピックの次元情報を表示
- */
-function updateTopicDimensions(topic) {
-    const container = document.getElementById('topic-dimensions');
-    if (!container || !topic) return;
-    
-    container.innerHTML = '';
-    
-    // 各次元のバーを作成
-    topic.vector.forEach((value, index) => {
-        const dimensionName = CONFIG.dimensionNames[index] || `Dim${index + 1}`;
-        const dimensionColor = CONFIG.dimensionColors[index] || '#888';
-        const percentage = (value * 100).toFixed(1);
-        
-        const barDiv = document.createElement('div');
-        barDiv.className = 'dimension-bar';
-        
-        const labelSpan = document.createElement('span');
-        labelSpan.className = 'label';
-        labelSpan.textContent = dimensionName;
-        labelSpan.style.color = dimensionColor;
-        
-        const trackDiv = document.createElement('div');
-        trackDiv.className = 'bar-track';
-        
-        const fillDiv = document.createElement('div');
-        fillDiv.className = 'bar-fill';
-        fillDiv.style.width = `${value * 100}%`;
-        fillDiv.style.background = dimensionColor;
-        
-        const valueSpan = document.createElement('span');
-        valueSpan.className = 'value';
-        valueSpan.textContent = percentage + '%';
-        valueSpan.style.color = dimensionColor;
-        valueSpan.style.fontSize = '0.65rem';
-        valueSpan.style.minWidth = '40px';
-        valueSpan.style.textAlign = 'right';
-        
-        trackDiv.appendChild(fillDiv);
-        barDiv.appendChild(labelSpan);
-        barDiv.appendChild(trackDiv);
-        barDiv.appendChild(valueSpan);
-        
-        container.appendChild(barDiv);
-    });
 }
 
 /**
@@ -273,7 +245,9 @@ function updateMemberList(group, topic) {
         categorySpan.textContent = categoryName;
         categorySpan.style.fontWeight = 'bold';
         categorySpan.style.minWidth = '35px';
-        categorySpan.style.color = CONFIG.dimensionColors[member.primaryInterestDim];
+        // 20次元に対応するため、色は循環させる
+        const colorIndex = member.primaryInterestDim % CONFIG.dimensionColors.length;
+        categorySpan.style.color = CONFIG.dimensionColors[colorIndex];
         
         // 興味度バーグラフ
         const barContainer = document.createElement('div');
@@ -290,7 +264,9 @@ function updateMemberList(group, topic) {
         if (member.leftOut) {
             barFill.style.background = '#ff4444';
         } else {
-            barFill.style.background = CONFIG.dimensionColors[member.primaryInterestDim];
+            // 20次元に対応するため、色は循環させる
+            const colorIndex = member.primaryInterestDim % CONFIG.dimensionColors.length;
+            barFill.style.background = CONFIG.dimensionColors[colorIndex];
         }
         
         barTrack.appendChild(barFill);
@@ -328,10 +304,13 @@ function updateMemberList(group, topic) {
 
 /**
  * 次元インデックスから3文字の略称を取得
+ * 20次元に対応（D0-D19の形式）
  */
 function getCategoryAbbreviation(dimIndex) {
-    const abbreviations = ['POL', 'TEC', 'SPO', 'SCI', 'REL', 'COM'];
-    return abbreviations[dimIndex] || 'UNK';
+    if (dimIndex >= 0 && dimIndex < CONFIG.numDimensions) {
+        return `D${dimIndex}`;
+    }
+    return 'UNK';
 }
 
 /**
@@ -400,7 +379,7 @@ function displayLeftOutLog() {
                 <span class="leftout-time">${time}s</span>
                 <span class="leftout-group">G${log.groupId + 1}</span>
                 <span class="leftout-member">M${log.memberId + 1}</span>
-                <span class="leftout-category" style="color: ${CONFIG.dimensionColors[log.categoryDimIndex] || '#888'}">${log.category}</span>
+                <span class="leftout-category" style="color: ${CONFIG.dimensionColors[log.categoryDimIndex % CONFIG.dimensionColors.length] || '#888'}">${log.category}</span>
                 <span class="leftout-topic">${log.topic.split('.').pop()}</span>
                 <span class="leftout-velocity">vG=${log.vG} vI=${log.vI}</span>
             </div>

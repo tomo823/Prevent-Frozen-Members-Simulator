@@ -6,7 +6,7 @@
 export const CONFIG = {
     groupSize: 10,
     numGroups: 4,
-    numDimensions: 6,
+    numDimensions: 20,
 
     // 6つの次元の名前（論文の「視点」に相当）
     dimensionNames: ['Politics', 'Tech', 'Sports', 'Science', 'Religion', 'Commerce'],
@@ -47,38 +47,3 @@ export const PARAMS = {
     paused: false,
     selectedGroupId: 0
 };
-
-// 20 Newsgroups データセット定義
-export const NEWSGROUP_TOPICS = [
-    // 政治系トピック（Politics次元が高い）
-    { name: 'talk.politics.misc', weights: [0.65, 0.05, 0.02, 0.08, 0.10, 0.10] },
-    { name: 'talk.politics.guns', weights: [0.55, 0.08, 0.05, 0.02, 0.15, 0.15] },
-    { name: 'talk.politics.mideast', weights: [0.50, 0.05, 0.02, 0.05, 0.30, 0.08] },
-    
-    // 技術系トピック（Tech次元が高い）
-    { name: 'comp.graphics', weights: [0.02, 0.70, 0.02, 0.18, 0.02, 0.06] },
-    { name: 'comp.os.ms-windows', weights: [0.03, 0.72, 0.02, 0.10, 0.02, 0.11] },
-    { name: 'comp.sys.mac.hardware', weights: [0.02, 0.68, 0.02, 0.12, 0.02, 0.14] },
-    { name: 'comp.windows.x', weights: [0.02, 0.75, 0.02, 0.13, 0.02, 0.06] },
-    
-    // スポーツ系トピック（Sports次元が高い）
-    { name: 'rec.sport.baseball', weights: [0.05, 0.03, 0.70, 0.02, 0.02, 0.18] },
-    { name: 'rec.sport.hockey', weights: [0.04, 0.03, 0.72, 0.02, 0.02, 0.17] },
-    { name: 'rec.autos', weights: [0.05, 0.15, 0.45, 0.10, 0.02, 0.23] },
-    { name: 'rec.motorcycles', weights: [0.04, 0.12, 0.48, 0.08, 0.02, 0.26] },
-    
-    // 科学系トピック（Science次元が高い）
-    { name: 'sci.space', weights: [0.10, 0.18, 0.02, 0.60, 0.02, 0.08] },
-    { name: 'sci.med', weights: [0.08, 0.12, 0.05, 0.58, 0.05, 0.12] },
-    { name: 'sci.electronics', weights: [0.03, 0.30, 0.02, 0.52, 0.02, 0.11] },
-    { name: 'sci.crypt', weights: [0.12, 0.28, 0.02, 0.48, 0.02, 0.08] },
-    
-    // 宗教系トピック（Religion次元が高い）
-    { name: 'soc.religion.christian', weights: [0.15, 0.02, 0.02, 0.03, 0.70, 0.08] },
-    { name: 'talk.religion.misc', weights: [0.18, 0.03, 0.02, 0.05, 0.65, 0.07] },
-    { name: 'alt.atheism', weights: [0.20, 0.05, 0.02, 0.15, 0.50, 0.08] },
-    
-    // 商業系トピック（Commerce次元が高い）
-    { name: 'misc.forsale', weights: [0.05, 0.15, 0.10, 0.05, 0.02, 0.63] },
-    { name: 'rec.autos.marketplace', weights: [0.03, 0.10, 0.25, 0.05, 0.02, 0.55] },
-];
