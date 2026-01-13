@@ -1,60 +1,37 @@
 import json
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
+from sklearn.metrics.pairwise import cosine_similarity
 
-file_path = 'topics_top20.json'
+def calculate_topic_similarity_matrix(json_file):
+    # 1. JSONファイルの読み込み
+    with open(json_file, 'r', encoding='utf-8') as f:
+        topic_data = json.load(f)
+    
+    # 2. 名前とベクトルの抽出
+    names = [t['name'] for t in topic_data]
+    vectors = np.array([t['vector'] for t in topic_data])
 
-with open(file_path, 'r') as f:
-    data = json.load(f)
+    # 3. sklearnを用いてコサイン類似度行列を計算
+    # vectorsの各行を正規化して内積を計算する処理が一括で行われます
+    similarity_matrix = cosine_similarity(vectors)
 
-# Use the data directly as it's small enough to inline
-vectors = np.array([d['vector'] for d in data])
-names = np.array([d['name'] for d in data])
-n = len(vectors)
+    # 4. 可読性のためにpandasのDataFrameに変換
+    df_similarity = pd.DataFrame(similarity_matrix, index=names, columns=names)
 
-pairs_data = []
+    return df_similarity
 
-for i in range(n):
-    for j in range(i + 1, n):
-        # Cosine Similarity
-        vec_a = vectors[i]
-        vec_b = vectors[j]
-        norm_a = np.linalg.norm(vec_a)
-        norm_b = np.linalg.norm(vec_b)
-        
-        sim = np.dot(vec_a, vec_b) / (norm_a * norm_b)
-        
-        is_same_topic = (names[i] == names[j])
-        
-        pairs_data.append({
-            'index_pair': (i, j),
-            'name_a': names[i],
-            'name_b': names[j],
-            'similarity': sim,
-            'relationship': 'Same Topic' if is_same_topic else 'Different Topic'
-        })
-
-df = pd.DataFrame(pairs_data)
-
-# Calculate statistics
-stats = df.groupby('relationship')['similarity'].agg(['mean', 'var', 'count', 'min', 'max'])
-print("Statistics by Relationship Type:")
-print(stats)
-
-# Overall statistics
-overall_mean = df['similarity'].mean()
-overall_var = df['similarity'].var()
-print(f"\nOverall Mean: {overall_mean}")
-print(f"Overall Variance: {overall_var}")
-
-
-# Visualization
-plt.figure(figsize=(10, 6))
-sns.histplot(data=df, x='similarity', hue='relationship', kde=True, bins=30, alpha=0.6)
-plt.title('Distribution of Cosine Similarities')
-plt.xlabel('Cosine Similarity')
-plt.ylabel('Count')
-plt.axvline(x=0.99, color='r', linestyle='--', label='Potential Threshold') # Arbitrary guess line
-plt.savefig('../data/plots/similarity_dist.png')
+# --- 実行例 ---
+file_path = 'topics.json'
+try:
+    similarity_df = calculate_topic_similarity_matrix(file_path)
+    
+    # 結果の表示（小数点以下4桁）
+    print("=== 話題間のコサイン類似度行列 ===")
+    print(similarity_df.round(4))
+    
+    # CSVとして保存したい場合
+    # similarity_df.to_csv('topic_similarity_matrix.csv')
+    
+except FileNotFoundError:
+    print(f"エラー: {file_path} が見つかりません。")
