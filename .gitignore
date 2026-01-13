@@ -1,4 +1,7 @@
 venv312/
+scripts/top2vec_20newsgroups_model
+scripts/top2vec_20newsgroups_model_orig
+scripts/umap_vectors_300d.npy
 __pycache__/
 *.pyc
 .env
