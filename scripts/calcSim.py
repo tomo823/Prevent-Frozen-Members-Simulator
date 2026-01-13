@@ -4,7 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-file_path = '../data/topics/topics.json'
+file_path = 'topics_top20.json'
 
 with open(file_path, 'r') as f:
     data = json.load(f)

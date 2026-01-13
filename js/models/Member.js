@@ -67,8 +67,11 @@ export default class Member {
                     ? 0.50 + Math.random() * 0.20 
                     : 0.02 + Math.random() * 0.08;
             }
-            const sum = interests.reduce((a, b) => a + b, 0);
-            interests = interests.map(v => v / sum);
+
+            // 3. L2正規化（ベクトルの長さを1にする：コサイン類似度計算用）
+            // 各要素を二乗した合計の平方根（ノルム）で割ります
+            const normL2 = Math.sqrt(interests.reduce((a, b) => a + b * b, 0));
+            interests = interests.map(v => v / normL2);
         }
 
         this.primaryInterestDim = interests.indexOf(Math.max(...interests));

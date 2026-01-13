@@ -10,13 +10,12 @@ from openTSNE import TSNE
 # 1. データのロード
 print("Loading data...")
 newsgroups = fetch_20newsgroups(subset='all', remove=('headers', 'footers', 'quotes'))
-documents = newsgroups.data
 
 # 2. Top2Vecモデルの学習
 # speed='learn' は高品質な埋め込みを作成します。
 # workers は CPU コア数に合わせて調整してください。
 print("Training Top2Vec model (this may take a while)...")
-model = Top2Vec(documents, speed='learn', workers=8)
+model = Top2Vec(newsgroups.data, speed='learn', workers=8)
 
 # 3. トピック数の確認
 num_topics = model.get_num_topics()
