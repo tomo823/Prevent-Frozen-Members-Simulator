@@ -1,0 +1,57 @@
+time_step,topic_name,member_id,interest,status,is_intervening
+0,amp.audio.asking,0,4.3940,active,0
+0,amp.audio.asking,1,5.9104,active,0
+0,amp.audio.asking,2,4.2720,active,0
+0,amp.audio.asking,3,5.0528,active,0
+1,bike.bikes.miles,0,4.6579,at_risk,0
+1,bike.bikes.miles,1,6.1044,active,0
+1,bike.bikes.miles,2,4.4525,at_risk,0
+1,bike.bikes.miles,3,5.3533,active,0
+2,moral.morality.objective,0,5.1748,at_risk,0
+2,moral.morality.objective,1,6.1460,active,0
+2,moral.morality.objective,2,4.6302,at_risk,0
+2,moral.morality.objective,3,5.6329,active,0
+3,game.team.games,0,5.0293,at_risk,0
+3,game.team.games,1,5.9523,active,0
+3,game.team.games,2,4.4727,at_risk,0
+3,game.team.games,3,5.3827,active,0
+4,post.jim.cs colorado,0,4.9832,at_risk,0
+4,post.jim.cs colorado,1,5.9516,active,0
+4,post.jim.cs colorado,2,4.4538,at_risk,0
+4,post.jim.cs colorado,3,5.3611,active,0
+5,amp.audio.asking,0,4.3940,at_risk,0
+5,amp.audio.asking,1,5.9104,active,0
+5,amp.audio.asking,2,4.2720,at_risk,0
+5,amp.audio.asking,3,5.0528,active,0
+6,printer.print.hp,0,4.3781,at_risk,0
+6,printer.print.hp,1,5.7250,active,0
+6,printer.print.hp,2,4.1868,at_risk,0
+6,printer.print.hp,3,4.8865,active,0
+7,scsi.drive.drives,0,4.3105,at_risk,0
+7,scsi.drive.drives,1,5.9126,active,0
+7,scsi.drive.drives,2,4.2874,at_risk,0
+7,scsi.drive.drives,3,5.0133,active,0
+8,window.widget.event,0,4.4800,at_risk,0
+8,window.widget.event,1,5.6758,active,0
+8,window.widget.event,2,4.1910,at_risk,0
+8,window.widget.event,3,4.8876,active,0
+9,bike.bikes.miles,0,4.6579,at_risk,0
+9,bike.bikes.miles,1,6.1044,active,0
+9,bike.bikes.miles,2,4.4525,at_risk,0
+9,bike.bikes.miles,3,5.3533,active,0
+10,moral.morality.objective,0,5.1748,at_risk,0
+10,moral.morality.objective,1,6.1460,active,0
+10,moral.morality.objective,2,4.6302,at_risk,0
+10,moral.morality.objective,3,5.6329,active,0
+11,game.team.games,0,5.0293,at_risk,0
+11,game.team.games,1,5.9523,active,0
+11,game.team.games,2,4.4727,at_risk,0
+11,game.team.games,3,5.3827,active,0
+12,car.cars.engine,0,4.6046,at_risk,0
+12,car.cars.engine,1,6.0846,active,0
+12,car.cars.engine,2,4.4281,at_risk,0
+12,car.cars.engine,3,5.3049,active,0
+13,key.clipper.encryption,0,4.7501,at_risk,0
+13,key.clipper.encryption,1,5.9618,active,0
+13,key.clipper.encryption,2,4.4270,at_risk,0
+13,key.clipper.encryption,3,5.2616,active,0

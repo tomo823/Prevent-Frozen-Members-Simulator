@@ -80,3 +80,56 @@ export function arrangeTopicsByProjection(topics, cols, rows) {
     }
     return result;
 }
+
+/**
+ * データの配列をCSVとしてダウンロードさせる
+ * @param {Object[]} data - ログデータの配列
+ * @param {string} filename - 保存ファイル名
+ */
+export function downloadCSV(data, filename) {
+    if (!data || data.length === 0) return;
+
+    const headers = Object.keys(data[0]);
+    const csvContent = [
+        headers.join(','), // ヘッダー行
+        ...data.map(row => headers.map(h => row[h]).join(',')) // データ行
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+}
+
+export async function saveCSV(data, filename) {
+    // データの中身を詳細にチェック
+    if (!data || !Array.isArray(data) || data.length === 0) {
+        console.error(`Save failed for ${filename}: Data is empty or not an array.`, data);
+        return;
+    }
+
+    // 最初の要素が存在することを保証
+    const firstRow = data[0];
+    if (!firstRow) {
+        console.error(`Save failed for ${filename}: First row is undefined.`);
+        return;
+    }
+
+    const headers = Object.keys(data[0]);
+    const csvContent = [
+        headers.join(','),
+        ...data.map(row => headers.map(h => row[h]).join(','))
+    ].join('\n');
+
+    try {
+        await fetch('http://localhost:5000/save-csv', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filename, content: csvContent })
+        });
+        console.log(`${filename} saved to /logs folder via Python server.`);
+    } catch (err) {
+        console.error("Save failed. Make sure save_server.py is running!", err);
+    }
+}

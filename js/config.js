@@ -4,7 +4,7 @@
  */
 
 export const CONFIG = {
-    groupSize: 3,
+    groupSize: 4,
     numGroups: 4,
     numDimensions: 20,
 
@@ -29,14 +29,14 @@ export const CONFIG = {
 
 // UIスライダー等でリアルタイムに変更されるパラメータ
 export const PARAMS = {
-    cohesionWeight: 2.0,
-    alignmentWeight: 0.8,
-    separationWeight: 1.0,
+    cohesionWeight: 2,
+    alignmentWeight: 1,
+    separationWeight: 2,
     interestPullWeight: 0.5,
     
     // 離脱予兆判定
     recoveryThreshold: 0.07,    // v0
-    leftOutThreshold: 0.12,     // v1
+    leftOutThreshold: 1.0,     // v1
 
     // 近傍話題の類似度閾値
     neighborTopicsThreshold: 0.5,

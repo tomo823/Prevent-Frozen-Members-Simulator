@@ -20,7 +20,7 @@ let topicsData = null; // topics.jsonから読み込んだデータ
  */
 async function loadTopicsData() {
     try {
-        const response = await fetch('data/topics/topics.json');
+        const response = await fetch('data/topics/topics_20d.json');
         topicsData = await response.json();
         return topicsData;
     } catch (error) {
@@ -431,3 +431,10 @@ function updateGraphLegend() {
         container.appendChild(legendItem);
     });
 }
+
+window.keyPressed = () => {
+    if (key === 's' || key === 'S') {
+        groups.forEach(g => g.exportGroupLog());
+        console.log("CSV Exported for all groups.");
+    }
+};

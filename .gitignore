@@ -5,3 +5,4 @@ scripts/umap_vectors_300d.npy
 __pycache__/
 *.pyc
 .env
+data/topics/topics_orig.json

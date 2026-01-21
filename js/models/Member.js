@@ -9,6 +9,7 @@ export default class Member {
     /**
      * @param {number} groupId - 所属グループID
      * @param {number} memberId - グループ内での一意のID
+     * @param {number[]|null} agentInterests - エージェント用の計算済み興味ベクトル
      */
 
     // 状態の定義
@@ -18,7 +19,7 @@ export default class Member {
         LEFT_OUT: 'left_out' // 完全に離脱（停止状態など）
     };
 
-    constructor(groupId, memberId) {
+    constructor(groupId, memberId, agentInterests = null) {
         this.groupId = groupId;
         this.memberId = memberId;
         this.color = CONFIG.memberColors[memberId % CONFIG.memberColors.length];
@@ -34,10 +35,17 @@ export default class Member {
 
         // 状態管理（初期状態はACTIVE）
         this.state = Member.STATES.ACTIVE;
+
+        // ベクトルの決定
+        if (agentInterests) {
+            this.latentInterests = agentInterests;
+        } else {
+            this.latentInterests = this._generateLatentInterests();
+        }
         
-        // 興味プロファイル（潜在興味ベクトル）の初期化
-        this.latentInterests = this._generateLatentInterests();
-        
+        // ★修正：エージェントでも一般人でも、決定したベクトルから最大次元を特定する
+        this.primaryInterestDim = this.latentInterests.indexOf(Math.max(...this.latentInterests));
+
         // 現在の状態
         this.currentInterest = 0;   // 現在のトピックに対する興味度
         this.currentVelocity = 0;   // 興味に基づいた計算上の速度
@@ -50,29 +58,19 @@ export default class Member {
      * @private
      */
     _generateLatentInterests() {
-        let interests;
-        let maxInterests = null;
+        let interests = new Array(CONFIG.numDimensions);
+        // 特定の分野に強い興味を持つランダム生成
+        this.primaryInterest = Math.floor(random(CONFIG.numDimensions));
 
-        // IDが9（最後の人）かつ、集計データがある場合
-        if (this.memberId === 9 && maxInterests) {
-            return maxInterests;
-        } 
-        else {
-            // ID 0〜8：特定の分野に強い興味を持つランダム生成
-            interests = new Array(CONFIG.numDimensions);
-            this.primaryInterest = Math.floor(random(CONFIG.numDimensions));
-
-            for (let k = 0; k < CONFIG.numDimensions; k++) {
-                interests[k] = (k === this.primaryInterest) 
-                    ? 0.50 + Math.random() * 0.20 
-                    : 0.02 + Math.random() * 0.08;
-            }
-
-            // 3. L2正規化（ベクトルの長さを1にする：コサイン類似度計算用）
-            // 各要素を二乗した合計の平方根（ノルム）で割ります
-            const normL2 = Math.sqrt(interests.reduce((a, b) => a + b * b, 0));
-            interests = interests.map(v => v / normL2);
+        for (let k = 0; k < CONFIG.numDimensions; k++) {
+            interests[k] = (k === this.primaryInterest) 
+                ? 0.50 + Math.random() * 0.20 
+                : 0.02 + Math.random() * 0.08;
         }
+
+        // L2正規化
+        const normL2 = Math.sqrt(interests.reduce((a, b) => a + b * b, 0));
+        interests = interests.map(v => v / normL2);
 
         this.primaryInterestDim = interests.indexOf(Math.max(...interests));
         return interests;
@@ -127,6 +125,12 @@ export default class Member {
      * @param {Topic} topic 
      */
     calculateInterest(topic) {
+        // // 【追加】もしエージェントがこの話題へ誘導中なら、興味を最大にする
+        // if (this.steeringTarget && this.steeringTarget.id === topic.id) {
+        //     // this.currentInterest = CONFIG.maxInterest * 0.5; // 最大値(10など)
+        //     return this.currentInterest;
+        // }
+
         let dotProduct = 0;
         for (let k = 0; k < CONFIG.numDimensions; k++) {
             dotProduct += this.latentInterests[k] * topic.vector[k];

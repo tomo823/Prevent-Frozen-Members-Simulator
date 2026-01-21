@@ -4,7 +4,7 @@
  */
 
 import { CONFIG, PARAMS } from '../config.js';
-import { arrangeTopicsByProjection } from '../utils.js';
+import { arrangeTopicsByProjection, saveCSV } from '../utils.js';
 import Topic from './Topic.js';
 import Member from './Member.js';
 
@@ -36,12 +36,16 @@ export default class Group {
         this.interestHistory = [];
         this.topicHistory = [];
 
+        this.logs = [];
+        this.timeStep = 0;
+        this.isIntervening = false;
+
         this._initTopics();
         this._initMembers();
         
         // 初期状態の計算
         this._updateMemberInterests();
-        this.recordInterestSnapshot();
+        this._recordSnapshot();
     }
 
     /**
@@ -67,20 +71,56 @@ export default class Group {
      * @private
      */
     _initMembers() {
-        for (let i = 0; i < CONFIG.groupSize; i++) {
+        let generalInterests = [];
+
+        // 1. エージェント以外（一般メンバー）の生成
+        const numGeneral = CONFIG.groupSize - 1;
+        for (let i = 0; i < numGeneral; i++) {
             const member = new Member(this.id, i);
-            // グループの中央付近にランダム配置
-            member.pos = createVector(
-                this.windowCentroid.x + (Math.random() - 0.5) * 50,
-                this.windowCentroid.y + (Math.random() - 0.5) * 50
-            );
-            member.vel = p5.Vector.random2D().mult(0.2);
-            // モードに応じた速度パラメータを設定
-            member.maxSpeed = PARAMS.singleGroupMode ? 1.4 : 0.9;
-            member.maxForce = PARAMS.singleGroupMode ? 0.07 : 0.05;
-            
+            this._setupMemberPhysics(member);
             this.members.push(member);
+            // エージェント計算用にベクトルを保存
+            generalInterests.push(member.latentInterests);
         }
+
+        // 2. 会話支援エージェント（最後の一人）の生成
+        const agentId = CONFIG.groupSize - 1;
+        const agentVector = this._calculateAgentVector(generalInterests);
+        const agent = new Member(this.id, agentId, agentVector);
+        this._setupMemberPhysics(agent);
+        this.members.push(agent);
+    }
+
+    /**
+     * 物理パラメータと初期位置の設定
+     * @private
+     */
+    _setupMemberPhysics(member) {
+        member.pos = createVector(
+            this.windowCentroid.x + (Math.random() - 0.5) * 50,
+            this.windowCentroid.y + (Math.random() - 0.5) * 50
+        );
+        member.vel = p5.Vector.random2D().mult(0.2);
+        member.maxSpeed = PARAMS.singleGroupMode ? 1.4 : 0.9;
+        member.maxForce = PARAMS.singleGroupMode ? 0.07 : 0.05;
+    }
+
+    /**
+     * 一般メンバーの興味からエージェントのベクトルを計算（各次元の最大値）
+     * @private
+     */
+    _calculateAgentVector(interestArray) {
+        let maxInterests = new Array(CONFIG.numDimensions).fill(0);
+        
+        for (let k = 0; k < CONFIG.numDimensions; k++) {
+            // 各次元において全メンバーの中の最大値を採用
+            maxInterests[k] = Math.max(...interestArray.map(v => v[k]));
+        }
+
+        // 合成したベクトルをL2正規化
+        const normL2 = Math.sqrt(maxInterests.reduce((a, b) => a + b * b, 0));
+        return maxInterests.map(v => (normL2 > 0 ? v / normL2 : 0));
+        // return maxInterests;
     }
 
     /**
@@ -219,6 +259,17 @@ export default class Group {
     update() {
         if (this.halted || PARAMS.paused) return;
 
+        // 離脱候補者の数をカウント
+        const atRiskCount = this.members.filter(m => 
+            m.state === Member.STATES.AT_RISK || m.state === Member.STATES.LEFT_OUT
+        ).length;
+
+        // 2人以上が離脱候補（または既に離脱）ならグループを停止
+        if (atRiskCount >= 2) {
+            // this.halted = true;
+            console.log(`Group ${this.id} halted: too many at-risk members (${atRiskCount})`);
+        }
+
         // 1. 各トピックの冷却
         this.topics.forEach(t => t.coolDown());
 
@@ -226,6 +277,12 @@ export default class Group {
         if (frameCount - this.lastLeftOutCheck >= PARAMS.leftOutCheckFrequency) {
             this._updateMemberInterests();
             this._handleMemberStates();
+
+            // 【追加】リスクメンバーが1人いる場合、Min-Max誘導を開始
+            if (atRiskCount === 1) {
+                this._applyMinMaxSteering();
+            }
+
             this.lastLeftOutCheck = frameCount;
         }
 
@@ -260,8 +317,16 @@ export default class Group {
         if (newTopic && newTopic.id !== this.currentTopicIndex) {
             this.currentTopicIndex = newTopic.id;
             newTopic.onEnter();
+
+            // 【追加】話題が遷移したらエージェントの誘導ターゲットをクリア
+            const agent = this.members[CONFIG.groupSize - 1];
+            if (agent) {
+                agent.steeringTarget = null;
+            }
+
             this._updateMemberInterests();
-            this.recordInterestSnapshot();
+            this._handleMemberStates(); // 状態も再判定
+            this._recordSnapshot();
         }
     }
 
@@ -330,9 +395,17 @@ export default class Group {
             }
         });
 
-        // 誘導の実行
         if (bestTopic) {
+            // 【追加】エージェントに誘導目標をセットし、興味を最大化させる
+            const agent = this.members[CONFIG.groupSize - 1];
+            if (agent) {
+                agent.steeringTarget = bestTopic;
+                // 強制的に再計算させて引力（Pull Force）を生む
+                this._updateMemberInterests();
+            }
+            
             this._steerToTopic(bestTopic);
+            console.log(`Agent is steering group to: ${bestTopic.name}`);
         }
     }
 
@@ -420,5 +493,39 @@ export default class Group {
             this.interestHistory.shift();
             this.topicHistory.shift();
         }
+    }
+
+    // 話題が切り替わった時に呼ぶメソッド
+    _recordSnapshot() {
+        // メンバーがいない場合は警告
+        if (!this.members || this.members.length === 0) {
+            console.warn(`Group ${this.id}: No members found during snapshot!`);
+            return;
+        }
+
+        const currentTopic = this.getCurrentTopic();
+        const topicName = currentTopic ? currentTopic.name : "None";
+
+        this.members.forEach(m => {
+            const entry = {
+                time_step: this.timeStep,
+                topic_name: topicName,
+                member_id: m.memberId,
+                interest: m.currentInterest ? m.currentInterest.toFixed(4) : "0.0000",
+                status: m.state || "unknown",
+                is_intervening: this.isIntervening ? 1 : 0
+            };
+            this.logs.push(entry);
+        });
+
+        console.log(`Group ${this.id}: Snapshot recorded. Total logs: ${this.logs.length}`);
+        this.timeStep++;
+    }
+
+    // 外部からCSV出力を命令されるメソッド
+    exportGroupLog() {
+        console.log(`Exporting log for group ${this.id}...`);
+        // downloadCSV ではなく saveCSV を呼ぶ
+        saveCSV(this.logs, `group_${this.id}_log.csv`);
     }
 }
