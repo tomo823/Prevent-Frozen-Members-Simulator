@@ -554,7 +554,7 @@
                 if (this.isFacilitator) {
                     // 原則3. 公平性の最適化: 全方位にバランスの取れた興味を持つ [cite: 257-258, 415]
                     for (let k = 0; k < CONFIG.numDimensions; k++) {
-                        this.latentInterests.push(0.5);
+                        this.latentInterests.push(0.7);
                     }
                 } else {
                     // 通常メンバーは特定の分野に強い興味を持つ [cite: 254]
@@ -833,28 +833,27 @@
                 // - リーダーの位置についていく
                 // - リーダーの進行方向にも追従（重要！）
                 // ============================================
-                let followLeader = createVector(0, 0);
-                let followDirection = createVector(0, 0);
+                let followLeaderPos = createVector(0, 0);
+                let followLeaderVel = createVector(0, 0);
                 
                 if (!isLeader && leader) {
-                    // 1. リーダーの位置へ向かう
-                    followLeader = p5.Vector.sub(leader.pos, this.pos);
-                    if (followLeader.mag() > 5) {
-                        followLeader.normalize();
-                        let followStrength = 0.3 + adjustedInterest * 1.0;
-                        followLeader.mult(this.maxForce * followStrength);
-                    } else {
-                        followLeader.mult(0);
+                        // 4-A. リーダーの「位置」へ向かう力 (羊飼いに追従する羊)
+                        followLeaderPos = p5.Vector.sub(leader.pos, this.pos);
+                        if (followLeaderPos.mag() > 5) {
+                            followLeaderPos.normalize();
+                            // 興味が高いほどリーダーに密着する
+                            let followStrength = 0.3 + adjustedInterest * 1.2;
+                            followLeaderPos.mult(this.maxForce * followStrength);
+                        }
+                        
+                        // 4-B. リーダーの「速度（向き）」に合わせる力
+                        // 修正: getDirectionToTopicでトピックを直視せず、リーダーの向きを真似ることで競合を回避
+                        if (leader.vel.mag() > 0.1) {
+                            followLeaderVel = leader.vel.copy().normalize();
+                            let alignStrength = 0.5 + adjustedInterest * 1.5;
+                            followLeaderVel.mult(this.maxForce * alignStrength);
+                        }
                     }
-                    
-                    // 2. リーダーの進行方向にも追従（NEW!）
-                    // これによりフォロワーはリーダーと同じ方向に動く
-                    if (group.targetTopic) {
-                        followDirection = group.getDirectionToTopic(group.targetTopic, this);
-                        let dirStrength = 0.5 + adjustedInterest * 1.5;
-                        followDirection.mult(this.maxForce * dirStrength);
-                    }
-                }
                 
                 // ============================================
                 // 興味に基づくBoids力の重み付け（フォロワーのみ）
@@ -901,8 +900,8 @@
                 // 全ての力を適用
                 // ============================================
                 this.applyForce(leaderSteer);   // リーダーの舵取り（最優先）
-                this.applyForce(followLeader);  // リーダー位置への追従
-                this.applyForce(followDirection); // リーダー方向への追従（NEW!）
+                this.applyForce(followLeaderPos); // リーダー位置への追従
+                this.applyForce(followLeaderVel); // リーダーの向きへの追従
                 this.applyForce(coh);           // 結合力
                 this.applyForce(ali);           // 整列力
                 this.applyForce(sep);           // 分離力
@@ -939,78 +938,78 @@
              * 
              * @param {boolean} isLeader - リーダーかどうか
              */
-            draw(groupColor, isLeader = false) {
-                push();
-                translate(this.pos.x, this.pos.y);
+            // draw(groupColor, isLeader = false) {
+            //     push();
+            //     translate(this.pos.x, this.pos.y);
                 
-                // スケール係数（シングルグループモードは大きく表示）
-                let scaleFactor = singleGroupMode ? 1.5 : 1.0;
+            //     // スケール係数（シングルグループモードは大きく表示）
+            //     let scaleFactor = singleGroupMode ? 1.5 : 1.0;
                 
-                if (this.leftOut) {
-                    // 離脱メンバーの描画（パルスアニメーション）
-                    let pulse = sin(frameCount * 0.12) * 3 + 14 * scaleFactor;
-                    noStroke(); 
-                    fill(255, 60, 60, 40);
-                    ellipse(0, 0, pulse + 8 * scaleFactor, pulse + 8 * scaleFactor);
-                    fill(70, 70, 80); 
-                    stroke(255, 80, 80); 
-                    strokeWeight(2);
-                    ellipse(0, 0, pulse, pulse);
-                    stroke(255, 120, 120); 
-                    strokeWeight(2);
-                    let x = pulse * 0.22;
-                    line(-x, -x, x, x); 
-                    line(-x, x, x, -x);
-                    fill(255); 
-                    noStroke(); 
-                    textSize(8 * scaleFactor); 
-                    textAlign(CENTER, CENTER);
-                    text('❄️', 0, -pulse/2 - 5 * scaleFactor);
-                } else {
-                    // アクティブメンバーの描画
-                    let interestNorm = this.getInterestNormalized();
+            //     if (this.leftOut) {
+            //         // 離脱メンバーの描画（パルスアニメーション）
+            //         let pulse = sin(frameCount * 0.12) * 3 + 14 * scaleFactor;
+            //         noStroke(); 
+            //         fill(255, 60, 60, 40);
+            //         ellipse(0, 0, pulse + 8 * scaleFactor, pulse + 8 * scaleFactor);
+            //         fill(70, 70, 80); 
+            //         stroke(255, 80, 80); 
+            //         strokeWeight(2);
+            //         ellipse(0, 0, pulse, pulse);
+            //         stroke(255, 120, 120); 
+            //         strokeWeight(2);
+            //         let x = pulse * 0.22;
+            //         line(-x, -x, x, x); 
+            //         line(-x, x, x, -x);
+            //         fill(255); 
+            //         noStroke(); 
+            //         textSize(8 * scaleFactor); 
+            //         textAlign(CENTER, CENTER);
+            //         text('❄️', 0, -pulse/2 - 5 * scaleFactor);
+            //     } else {
+            //         // アクティブメンバーの描画
+            //         let interestNorm = this.getInterestNormalized();
                     
-                    // リーダーは大きく表示
-                    let leaderBonus = isLeader ? 1.4 : 1.0;
-                    let size = map(interestNorm, 0, 1, 4, 10) * scaleFactor * leaderBonus;
-                    let brightness = map(interestNorm, 0, 1, 0.35, 1.0);
+            //         // リーダーは大きく表示
+            //         let leaderBonus = isLeader ? 1.4 : 1.0;
+            //         let size = map(interestNorm, 0, 1, 4, 10) * scaleFactor * leaderBonus;
+            //         let brightness = map(interestNorm, 0, 1, 0.35, 1.0);
                     
-                    // 移動方向に回転
-                    if (this.vel.mag() > 0.05) rotate(this.vel.heading());
+            //         // 移動方向に回転
+            //         if (this.vel.mag() > 0.05) rotate(this.vel.heading());
                     
-                    let c = color(this.color);
+            //         let c = color(this.color);
                     
-                    // リーダーには光彩効果
-                    if (isLeader) {
-                        noStroke();
-                        fill(red(c), green(c), blue(c), 50);
-                        ellipse(0, 0, size * 3, size * 3);
-                    }
+            //         // リーダーには光彩効果
+            //         if (isLeader) {
+            //             noStroke();
+            //             fill(red(c), green(c), blue(c), 50);
+            //             ellipse(0, 0, size * 3, size * 3);
+            //         }
                     
-                    fill(red(c) * brightness + 30, green(c) * brightness + 30, blue(c) * brightness + 30, 220);
-                    stroke(red(c), green(c), blue(c));
-                    strokeWeight(isLeader ? 2.5 * scaleFactor : 1.5 * scaleFactor);
+            //         fill(red(c) * brightness + 30, green(c) * brightness + 30, blue(c) * brightness + 30, 220);
+            //         stroke(red(c), green(c), blue(c));
+            //         strokeWeight(isLeader ? 2.5 * scaleFactor : 1.5 * scaleFactor);
                     
-                    // 三角形を描画
-                    beginShape();
-                    vertex(size, 0);
-                    vertex(-size * 0.5, size * 0.5);
-                    vertex(-size * 0.5, -size * 0.5);
-                    endShape(CLOSE);
+            //         // 三角形を描画
+            //         beginShape();
+            //         vertex(size, 0);
+            //         vertex(-size * 0.5, size * 0.5);
+            //         vertex(-size * 0.5, -size * 0.5);
+            //         endShape(CLOSE);
                     
-                    // リーダーには星マーク
-                    if (isLeader) {
-                        fill(255, 255, 100);
-                        noStroke();
-                        textSize(6 * scaleFactor);
-                        textAlign(CENTER, CENTER);
-                        // 回転をリセットして星を表示
-                        rotate(-this.vel.heading());
-                        text('★', 0, -size - 4 * scaleFactor);
-                    }
-                }
-                pop();
-            }
+            //         // リーダーには星マーク
+            //         if (isLeader) {
+            //             fill(255, 255, 100);
+            //             noStroke();
+            //             textSize(6 * scaleFactor);
+            //             textAlign(CENTER, CENTER);
+            //             // 回転をリセットして星を表示
+            //             rotate(-this.vel.heading());
+            //             text('★', 0, -size - 4 * scaleFactor);
+            //         }
+            //     }
+            //     pop();
+            // }
 
             draw(groupColor, isLeader) {
                 push();
@@ -1035,57 +1034,6 @@
             }
 
             /**
-             * ファシリテーターの形状描画 (六角形) 
-             */
-            drawFacilitator(s) {
-                fill(255); 
-                stroke(200, 100, 255);
-                strokeWeight(2);
-                beginShape();
-                for (let i = 0; i < 6; i++) {
-                    let angle = TWO_PI / 6 * i;
-                    vertex(cos(angle) * 8 * s, sin(angle) * 8 * s);
-                }
-                endShape(CLOSE);
-                textAlign(CENTER, CENTER);
-                textSize(8 * s);
-                text('⚖️', 0, 0); 
-            }
-
-            /**
-             * 離脱・凍結状態の描画 [cite: 240]
-             */
-            drawFrozenState(s) {
-                let pulse = sin(frameCount * 0.12) * 3 + 14 * s;
-                noStroke(); 
-                fill(255, 60, 60, 40);
-                ellipse(0, 0, pulse + 8 * s, pulse + 8 * s);
-                fill(70, 70, 80); 
-                stroke(255, 80, 80); 
-                strokeWeight(2);
-                ellipse(0, 0, pulse, pulse);
-                fill(255); 
-                noStroke(); 
-                textSize(8 * s); 
-                textAlign(CENTER, CENTER);
-                text('❄️', 0, 0);
-            }
-
-            /**
-             * リスク状態のハイライト (ハロー) [cite: 231-236, 444]
-             */
-            drawRiskHighlight(s) {
-                noStroke();
-                if (this.riskLevel === 1) { // リスク状態 (黄) [cite: 233]
-                    fill(255, 255, 0, 80);
-                    ellipse(0, 0, 20 * s, 20 * s);
-                } else if (this.riskLevel === 2) { // 危機状態 (橙) [cite: 236]
-                    fill(255, 100, 0, 120);
-                    ellipse(0, 0, 25 * s, 25 * s);
-                }
-            }
-
-            /**
              * 通常メンバーの形状描画 (三角形)
              */
             drawMemberBody(groupColor, isLeader, scaleFactor) {
@@ -1097,15 +1045,12 @@
                 if (this.vel.mag() > 0.05) rotate(this.vel.heading());
                 
                 let c = color(this.color);
-                if (isLeader) {
-                    noStroke();
-                    fill(red(c), green(c), blue(c), 50);
-                    ellipse(0, 0, size * 3, size * 3);
-                }
                 
-                fill(red(c) * brightness + 30, green(c) * brightness + 30, blue(c) * brightness + 30, 220);
+                // fill(red(c) * brightness + 30, green(c) * brightness + 30, blue(c) * brightness + 30, 220);
                 stroke(red(c), green(c), blue(c));
                 strokeWeight(isLeader ? 2.5 * scaleFactor : 1.5 * scaleFactor);
+                // 塗りつぶしは少し透明度を持たせる
+                fill(red(c), green(c), blue(c), 220);
                 
                 beginShape();
                 vertex(size, 0);
@@ -1144,15 +1089,39 @@
             drawRiskHighlight(s) {
                 noStroke();
                 if (this.riskLevel === 1) { // Risk状態
-                    fill(255, 255, 0, 80); // 黄色 [cite: 233]
+                    // 注意状態 (Risk): 青色
+                    // 暗い背景でも見やすいシアン系の青を採用
+                    fill(0, 191, 255, 120);
                     ellipse(0, 0, 20 * s, 20 * s);
                 } else if (this.riskLevel === 2) { // Critical状態
-                    fill(255, 100, 0, 120); // 橙色 [cite: 236]
+                    // 危機状態 (Critical): 黄色
+                    // 警告として目立つ鮮やかな黄色を採用
+                    fill(200, 200, 0, 150);
                     ellipse(0, 0, 25 * s, 25 * s);
                 }
             }
 
+            /**
+             * 離脱・凍結状態の描画 [cite: 240]
+             */
+            drawFrozenState(s) {
+                let pulse = sin(frameCount * 0.12) * 3 + 14 * s;
+                noStroke(); 
+                fill(255, 60, 60, 40);
+                ellipse(0, 0, pulse + 8 * s, pulse + 8 * s);
+                fill(70, 70, 80); 
+                stroke(255, 80, 80); 
+                strokeWeight(2);
+                ellipse(0, 0, pulse, pulse);
+                fill(255); 
+                noStroke(); 
+                textSize(8 * s); 
+                textAlign(CENTER, CENTER);
+                text('❄️', 0, 0);
+            }
         }
+
+
 
         // ============================================
         // Groupクラス
@@ -1252,13 +1221,14 @@
 
                 for (let m of this.members) {
                     m.updateRiskLevel(vG, this.thresholds);
-                    if (m.riskLevel >= 1 && !m.isFacilitator) atRiskCount++;
+                    if (m.riskLevel == 2 && !m.isFacilitator) atRiskCount++;
                 }
 
                 // 介入トリガーの判定 [cite: 278, 369]
                 if (!this.facilitatorActive && atRiskCount >= 1) {
                     this.facilitatorActive = true; // 活性状態へ [cite: 280]
                     this.stableFrames = 0;
+                    console.log(`Group ${this.id} facilitator activated.`);
                 } else if (this.facilitatorActive) {
                     // ヒステリシス（振動防止）: 全員が安全な状態が一定期間続けば解除 [cite: 376-384]
                     if (atRiskCount === 0) {
@@ -1360,6 +1330,11 @@
              * 自然と会話をリードする傾向がある
              */
             getCurrentLeader() {
+                // 介入モードなら、ファシリテーターを強制的に「物理的リーダー」にする
+                if (this.facilitatorActive && this.facilitator) {
+                    return this.facilitator;
+                }
+
                 let activeMembers = this.members.filter(m => !m.leftOut);
                 if (activeMembers.length === 0) return null;
                 
@@ -1779,7 +1754,7 @@
                         let arrowX = leader.pos.x + dirX * arrowLength;
                         let arrowY = leader.pos.y + dirY * arrowLength;
                         
-                        // 点線で方向を表示
+                        // 点線でd方向を表示
                         stroke(255, 215, 0, 180);  // 金色
                         strokeWeight(2 * scaleFactor);
                         drawingContext.setLineDash([4, 4]);
@@ -1805,15 +1780,52 @@
                     }
                 }
                 
-                // メンバーを描画（アクティブ→離脱の順で描画）
-                for (let m of this.members) {
-                    if (!m.leftOut) {
-                        m.draw(this.color, m === leader);
+                // Group.draw() メソッド内に追加
+                if (this.facilitatorActive) {
+                    // 1. グループの枠を強調（パルスするオレンジの枠）
+                    let pulse = sin(frameCount * 0.1) * 50 + 200;
+                    noFill();
+                    stroke(255, 255, 0, pulse); // 介入色：オレンジ
+                    strokeWeight(4);
+                    rect(this.bounds.x - 2, this.bounds.y - 2, this.bounds.w + 4, this.bounds.h + 4, 5);
+
+                    // 2. 「INTERVENTION ACTIVE」ラベルの表示 
+                    fill(255, 150, 0);
+                    noStroke();
+                    textSize(8 * scaleFactor);
+                    textAlign(RIGHT, TOP);
+                    text('⚠️ INTERVENTION ACTIVE', this.bounds.x + this.bounds.w - 5, this.bounds.y + 5);
+                }
+
+                // Group.draw() メソッド内、メンバー描画の前後に追加
+                if (this.facilitatorActive) {
+                    let riskMember = this.members.find(m => m.riskLevel >= 2);
+                    if (riskMember && this.facilitator) {
+                        // ファシリテーターからリスクメンバーへの支援ライン（点線）
+                        stroke(255, 200, 0, 150);
+                        strokeWeight(1);
+                        drawingContext.setLineDash([5, 5]);
+                        line(this.facilitator.pos.x, this.facilitator.pos.y, riskMember.pos.x, riskMember.pos.y);
+                        drawingContext.setLineDash([]);
+                        
+                        // リスクメンバーの足元にターゲットマークを表示
+                        noFill();
+                        stroke(255, 100, 0);
+                        ellipse(riskMember.pos.x, riskMember.pos.y, 30, 30);
                     }
                 }
+
+                // 1. 離脱メンバーを先に描画
                 for (let m of this.members) {
                     if (m.leftOut) {
                         m.draw(this.color, false);
+                    }
+                }
+
+                // 2. アクティブメンバーを上に描画
+                for (let m of this.members) {
+                    if (!m.leftOut) {
+                        m.draw(this.color, m === leader);
                     }
                 }
                 
