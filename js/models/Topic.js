@@ -67,6 +67,25 @@ export default class Topic {
     }
 
     /**
+     * 全トピックの中から、自身に隣接するものを抽出する
+     * @param {Topic[]} allTopics - シミュレーション上の全トピック配列
+     * @returns {Topic[]} 隣接トピックの配列
+     */
+    getAdjacent(allTopics) {
+        return allTopics.filter(other => {
+            // 自分自身は除外
+            if (other.id === this.id) return false;
+
+            // グリッド上の距離（マンハッタン距離ではなくチェビシェフ距離）を計算
+            let dx = Math.abs(other.gridX - this.gridX);
+            let dy = Math.abs(other.gridY - this.gridY);
+
+            // 上下左右・斜め1マス以内にいれば隣接とみなす
+            return dx <= 1 && dy <= 1;
+        });
+    }
+
+    /**
      * グループがこのトピックに到達した時の処理
      */
     onEnter() {

@@ -16,12 +16,15 @@ export default class Member {
     static STATES = {
         ACTIVE: 'active',   // 興味が閾値以上
         AT_RISK: 'at_risk', // 興味が閾値未満（検知状態）
+        CRITICAL: 'critical', // 危機状態（橙）
         LEFT_OUT: 'left_out' // 完全に離脱（停止状態など）
     };
 
-    constructor(groupId, memberId, agentInterests = null) {
+    constructor(groupId, memberId, isAgent = false, agentInterests = null) {
         this.groupId = groupId;
         this.memberId = memberId;
+        this.isAgent = isAgent; // エージェントフラグ
+        this.isLeader = false;  // 創発的リーダーフラグ（動的に変化）
         this.color = CONFIG.memberColors[memberId % CONFIG.memberColors.length];
         
         // 物理状態（p5.Vectorを使用）
@@ -35,20 +38,38 @@ export default class Member {
 
         // 状態管理（初期状態はACTIVE）
         this.state = Member.STATES.ACTIVE;
+        this.currentInterest = 0;   // 現在の話題に対する興味 (u_in) [cite: 150]
+        this.currentVelocity = 0;   // 発言意欲のメタファーとしての速度 (v_i) [cite: 157-160]
+        this.velocityHistory = [];  // トレンド計算用の窓 [cite: 242]
 
-        // ベクトルの決定
-        if (agentInterests) {
-            this.latentInterests = agentInterests;
+        // 早期警告シグナル用変数 [cite: 242]
+        this.velocityTrend = 0;     // 速度の傾き (d(v_i)/dt)
+        this.distanceFromCentroid = 0; // 空間的ドリフト
+
+        // 1. 興味ベクトルの初期化
+        if (this.isAgent) {
+            // 全次元に均等な興味を持つ（バランス型） 
+            this.latentInterests = new Array(CONFIG.numDimensions).fill(0.5);
+            // L2正規化
+            // const norm = Math.sqrt(this.latentInterests.reduce((a, b) => a + b * b, 0));
+            // this.latentInterests = this.latentInterests.map(v => v / norm);
         } else {
             this.latentInterests = this._generateLatentInterests();
         }
         
-        // ★修正：エージェントでも一般人でも、決定したベクトルから最大次元を特定する
-        this.primaryInterestDim = this.latentInterests.indexOf(Math.max(...this.latentInterests));
+        // 物理係数の初期化（undefinedエラー防止）
+        this.cohesionFactor = 0;
+        this.alignmentFactor = 0;
+        this.separationFactor = 0;
+        this.pullFactor = 0;
 
-        // 現在の状態
-        this.currentInterest = 0;   // 現在のトピックに対する興味度
-        this.currentVelocity = 0;   // 興味に基づいた計算上の速度
+        // 初回の係数計算
+        this.updateInterestFactors();
+
+        // ★修正：エージェントでも一般人でも、決定したベクトルから最大次元を特定する
+        // this.primaryInterestDim = this.latentInterests.indexOf(Math.max(...this.latentInterests));
+
+        this.steeringTarget = null; // 介入ターゲットのトピック
     }
 
     /**
@@ -137,6 +158,26 @@ export default class Member {
         }
         this.currentInterest = dotProduct * CONFIG.maxInterest;
         return this.currentInterest;
+    }
+
+    // Member.js 内の更新メソッドの一部
+    updateInterestFactors() {
+        // 興味レベルを0~1に正規化 (式3に基づく計算後) [cite: 324-326, 403]
+        const interestNorm = this.currentInterest / CONFIG.maxInterest;
+        const adjInt = interestNorm * PARAMS.interestSensitivity;
+
+        // 興味に応じたBoids重みの動的変更
+        // 高興味 → 結合力強 [cite: 329, 330]
+        this.cohesionFactor = PARAMS.cohesionBase * (0.1 + adjInt);
+        console.log("Cohesion Factor:", this.cohesionFactor);
+
+        // 高興味 → 同調力強 [cite: 328]
+        this.alignmentFactor = PARAMS.alignmentBase * (0.2 + adjInt);
+
+        // 低興味 → 分離力・放浪力強 [cite: 331-334]
+        this.separationFactor = PARAMS.separationBase * (1.5 - adjInt * 1.2);
+
+        this.pullFactor = 0.3 + adjInt * 0.7; // 最大1.0
     }
 
     /**

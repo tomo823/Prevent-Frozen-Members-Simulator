@@ -1,0 +1,2316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swarm Intelligence - Online Discussion Group Simulation</title>
+    <!-- p5.js ライブラリの読み込み - 描画とアニメーションに使用 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+    <style>
+        /* ============================================
+           CSS スタイル定義
+           - 全体のレイアウトとデザインを設定
+        ============================================ */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            padding: 10px;
+        }
+        /* ヘッダー部分のスタイル */
+        .header { text-align: center; margin-bottom: 6px; }
+        .header h1 { font-size: 1rem; color: #00d4ff; }
+        .header p { font-size: 0.65rem; color: #888; }
+        
+        /* メインコンテナ - 3列レイアウト（左パネル、中央、右パネル） */
+        .main-container { display: flex; gap: 8px; max-width: 1400px; margin: 0 auto; }
+        .left-panel { width: 260px; display: flex; flex-direction: column; gap: 6px; }
+        .center-area { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+        #simulation-canvas { background: #0f0f1a; border-radius: 6px; }
+        /* グラフキャンバス - 高DPIディスプレイ対応のためwidthとheightをCSSで固定 */
+        #graph-canvas { background: #0f0f1a; border-radius: 6px; border: 1px solid #2a3a5e; width: 640px; height: 160px; }
+        .right-panel { width: 210px; display: flex; flex-direction: column; gap: 6px; }
+        
+        /* パネル共通スタイル */
+        .panel { background: #16213e; border-radius: 5px; padding: 6px; }
+        .panel h3 { color: #00d4ff; font-size: 0.7rem; margin-bottom: 5px; border-bottom: 1px solid #2a3a5e; padding-bottom: 3px; }
+        
+        /* 次元バー（トピックの各次元の重みを表示） */
+        .dimension-bar { display: flex; align-items: center; margin-bottom: 2px; font-size: 0.5rem; }
+        .dimension-bar .label { width: 55px; color: #888; }
+        .dimension-bar .bar-track { flex: 1; height: 6px; background: #2a3a5e; border-radius: 3px; overflow: hidden; margin: 0 3px; }
+        .dimension-bar .bar-fill { height: 100%; border-radius: 3px; }
+        .dimension-bar .value { width: 24px; text-align: right; color: #00d4ff; font-size: 0.45rem; }
+        
+        /* メンバーリスト表示 */
+        .member-list { max-height: 150px; overflow-y: auto; font-size: 0.5rem; }
+        .member-item {
+            display: grid;
+            grid-template-columns: 24px 40px 1fr 38px 18px;
+            align-items: center;
+            padding: 2px 3px;
+            margin-bottom: 1px;
+            background: #1a2744;
+            border-radius: 2px;
+            gap: 2px;
+            border-left: 2px solid transparent;
+        }
+        /* メンバーの興味レベルに応じた色分け */
+        .member-item.high-interest { border-left-color: #4ecdc4; background: #1a3744; }
+        .member-item.low-interest { border-left-color: #ff6b6b; background: #2a1a24; }
+        .member-item.left-out { background: #3a1a1a; border-left-color: #ff4444; }
+        .member-item .interest-bar { height: 5px; background: #2a3a5e; border-radius: 2px; overflow: hidden; }
+        .member-item .interest-fill { height: 100%; border-radius: 2px; }
+        
+        /* コントロールグループ（スライダー等） */
+        .control-group { margin-bottom: 4px; }
+        .control-group label { display: block; font-size: 0.55rem; color: #aaa; margin-bottom: 1px; }
+        .control-group input[type="range"] { width: 100%; height: 3px; -webkit-appearance: none; background: #2a3a5e; border-radius: 2px; }
+        .control-group input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 8px; height: 8px; background: #00d4ff; border-radius: 50%; cursor: pointer; }
+        .control-group .value { text-align: right; font-size: 0.5rem; color: #00d4ff; }
+        
+        /* ボタンスタイル */
+        .btn { width: 100%; padding: 4px; border: none; border-radius: 3px; cursor: pointer; font-size: 0.6rem; font-weight: 600; margin-bottom: 2px; }
+        .btn-primary { background: linear-gradient(135deg, #00d4ff, #0099cc); color: #fff; }
+        .btn-secondary { background: #2a3a5e; color: #ddd; }
+        .btn-danger { background: #aa3333; color: #fff; }
+        
+        /* 統計表示グリッド */
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; }
+        .stat-item { background: #1a2744; padding: 3px; border-radius: 3px; text-align: center; }
+        .stat-item .value { font-size: 0.8rem; font-weight: bold; color: #00d4ff; }
+        .stat-item .value.danger { color: #ff4444; }
+        .stat-item .label { font-size: 0.45rem; color: #888; }
+        
+        /* グループ選択ボタン */
+        .group-selector { display: flex; gap: 2px; margin-bottom: 5px; }
+        .group-btn { flex: 1; padding: 3px; border: 2px solid transparent; border-radius: 3px; cursor: pointer; font-size: 0.55rem; font-weight: bold; }
+        .group-btn.active { border-color: #fff; }
+        .group-btn.g1 { background: #ff6b35; color: #fff; }
+        .group-btn.g2 { background: #4ecdc4; color: #fff; }
+        .group-btn.g3 { background: #95e86f; color: #000; }
+        .group-btn.g4 { background: #ffd93d; color: #000; }
+        
+        /* トピック情報カード */
+        .topic-card { background: #1a2744; padding: 5px; border-radius: 3px; margin-bottom: 5px; }
+        .topic-card .topic-name { font-size: 0.7rem; font-weight: bold; color: #fff; margin-bottom: 3px; }
+        .topic-card .topic-category { font-size: 0.55rem; color: #888; margin-bottom: 3px; }
+        
+        /* 数式表示ボックス */
+        .equation-box { background: #1a1a2a; border: 1px solid #3a3a5a; padding: 4px; border-radius: 3px; font-size: 0.5rem; font-family: monospace; margin-bottom: 5px; }
+        .equation-box .highlight { color: #ff6b6b; }
+        
+        /* グラフ凡例 */
+        .legend-item { display: inline-flex; align-items: center; margin-right: 6px; font-size: 0.45rem; }
+        .legend-color { width: 8px; height: 8px; border-radius: 2px; margin-right: 2px; }
+        
+        .graph-title { font-size: 0.7rem; color: #00d4ff; margin-bottom: 4px; }
+        
+        /* リーダー情報カード */
+        .leader-card {
+            background: linear-gradient(135deg, #1a2744 0%, #16213e 100%);
+            border: 1px solid #2a3a5e;
+            border-radius: 5px;
+            padding: 6px 10px;
+            min-width: 145px;
+            font-size: 0.55rem;
+        }
+        .leader-card.active { border-color: #ffd700; box-shadow: 0 0 8px rgba(255,215,0,0.3); }
+        .leader-card .group-label { font-weight: bold; margin-bottom: 3px; }
+        .leader-card .leader-name { color: #ffd700; font-weight: bold; }
+        .leader-card .arrow { color: #888; margin: 0 4px; }
+        .leader-card .target-topic { color: #4ecdc4; }
+        .leader-card .settled { color: #888; font-style: italic; }
+    </style>
+</head>
+<body>
+    <!-- ============================================
+         HTMLレイアウト構造
+         - ヘッダー: タイトルと説明
+         - メインコンテナ: 3列レイアウト
+    ============================================ -->
+    <div class="header">
+        <h1>Swarm Intelligence: Dynamic Tracking of Members' Interests</h1>
+        <p>★ Single Leader steers → Settling period before direction change → No backtracking</p>
+    </div>
+    
+    <div class="main-container">
+        <!-- 左パネル: トピック情報、メンバーリスト、ログ表示 -->
+        <div class="left-panel">
+            <div class="panel">
+                <h3>📍 Current Topic</h3>
+                <!-- グループ選択ボタン (G1-G4) -->
+                <div class="group-selector">
+                    <button class="group-btn g1 active" data-group="0">G1</button>
+                    <button class="group-btn g2" data-group="1">G2</button>
+                    <button class="group-btn g3" data-group="2">G3</button>
+                    <button class="group-btn g4" data-group="3">G4</button>
+                </div>
+                <!-- 現在のトピック情報表示 -->
+                <div class="topic-card">
+                    <div class="topic-name" id="topic-name">Loading...</div>
+                    <div class="topic-category" id="topic-category">-</div>
+                    <div id="topic-dimensions"></div>
+                </div>
+            </div>
+            
+            <!-- メンバー一覧パネル -->
+            <div class="panel">
+                <h3>👥 Members</h3>
+                <!-- 数式表示: 離脱判定の条件 -->
+                <div class="equation-box">
+                    <strong>v<sub>G</sub></strong> = <span id="vg-display">0.00</span> | 
+                    <strong>v₀</strong> = <span id="v0-display">1.00</span><br>
+                    <span class="highlight">Frozen if: v<sub>G</sub> - v<sub>i</sub> > v₀</span>
+                </div>
+                <div id="member-list" class="member-list"></div>
+            </div>
+            
+            <!-- 離脱メンバーのログ -->
+            <div class="panel">
+                <h3>📜 Left-Out Log</h3>
+                <div id="leftout-log" style="font-size:0.45rem; color:#ff8888; max-height:50px; overflow-y:auto;">Waiting...</div>
+            </div>
+            
+            <!-- グラフの凡例 -->
+            <div class="panel">
+                <h3>📊 Graph Legend</h3>
+                <div id="graph-legend" style="font-size:0.5rem; line-height: 1.6;"></div>
+            </div>
+        </div>
+        
+        <!-- 中央エリア: シミュレーションキャンバスとグラフ -->
+        <div class="center-area">
+            <div id="canvas-container"></div>
+            <!-- リーダー情報表示パネル -->
+            <div id="leader-info-panel" style="display:flex; gap:8px; margin-top:4px; flex-wrap:wrap;">
+            </div>
+            <div class="graph-title">📈 Members' Interest Fluctuation Over Topic Transitions (Selected Group)</div>
+            <!-- グラフ描画用キャンバス（vanilla JSで描画） -->
+            <canvas id="graph-canvas"></canvas>
+        </div>
+        
+        <!-- 右パネル: 統計情報とコントロール -->
+        <div class="right-panel">
+            <!-- 統計情報パネル -->
+            <div class="panel">
+                <h3>📊 Statistics</h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="value" id="total-active">40</div>
+                        <div class="label">Active</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="value danger" id="total-leftout">0</div>
+                        <div class="label">❄️ Frozen</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="value" id="topic-changes">0</div>
+                        <div class="label">Transitions</div>
+                    </div>
+                </div>
+                <div style="margin-top:4px; font-size:0.5rem; color:#888;">
+                    ★ Leader: <strong id="leader-count" style="color:#ffd700">-</strong> | 
+                    Halted: <strong id="halted-count" style="color:#f44">0</strong>
+                </div>
+            </div>
+            
+            <!-- 離脱検出パラメータ -->
+            <div class="panel">
+                <h3>❄️ Left-Out Detection</h3>
+                <div class="control-group">
+                    <label>Threshold v₀</label>
+                    <input type="range" id="threshold" min="0.3" max="3" value="1.0" step="0.1">
+                    <div class="value" id="threshold-val">1.00</div>
+                </div>
+                <div class="control-group">
+                    <label>Check frequency</label>
+                    <input type="range" id="check-freq" min="20" max="150" value="45" step="5">
+                    <div class="value" id="check-freq-val">45</div>
+                </div>
+                <button class="btn btn-danger" id="force-check-btn">⚡ Force Check</button>
+            </div>
+            
+            <!-- 興味感度パラメータ -->
+            <div class="panel">
+                <h3>🎯 Interest Sensitivity</h3>
+                <div class="control-group">
+                    <label>Behavior Sensitivity</label>
+                    <input type="range" id="interest-sensitivity" min="0.5" max="2.0" value="1.0" step="0.1">
+                    <div class="value" id="interest-sensitivity-val">1.0</div>
+                </div>
+                <div style="font-size:0.45rem; color:#888; margin-top:4px;">
+                    How strongly interest affects behavior:<br>
+                    • High interest → Stay with group<br>
+                    • Low interest → Drift away + wander
+                </div>
+            </div>
+            
+            <!-- コントロールボタン -->
+            <div class="panel">
+                <h3>🎮 Controls</h3>
+                <button class="btn btn-primary" id="mode-btn">🔄 Switch to 1 Group</button>
+                <button class="btn btn-secondary" id="restart-btn">🔄 Restart</button>
+                <button class="btn btn-secondary" id="pause-btn">⏸️ Pause</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // 設定定数 (CONFIG)
+        // シミュレーションの基本パラメータを定義
+        // ============================================
+        const CONFIG = {
+            groupSize: 10,          // 各グループのメンバー数
+            numGroups: 4,           // グループ数（4グループモード時）
+            numDimensions: 6,       // トピックの次元数（K次元ベクトル）
+            
+            // 6つの次元の名前（論文の「視点」に相当）
+            dimensionNames: ['Politics', 'Tech', 'Sports', 'Science', 'Religion', 'Commerce'],
+            
+            // 各次元の表示色
+            dimensionColors: ['#e74c3c', '#3498db', '#27ae60', '#9b59b6', '#f39c12', '#1abc9c'],
+            
+            maxVelocity: 10,        // 最大速度 Vmax（式5で使用）
+            maxInterest: 10,        // 最大興味レベル Lmax（式5で使用）
+            
+            // グループの表示色
+            groupColors: ['#ff6b35', '#4ecdc4', '#95e86f', '#ffd93d'],
+            groupNames: ['G1', 'G2', 'G3', 'G4'],
+            
+            // メンバーの個別色（グラフ表示用）
+            memberColors: [
+                '#ff6b6b', '#4ecdc4', '#ffe66d', '#95e86f', '#ff9ff3',
+                '#54a0ff', '#ff9f43', '#a55eea', '#26de81', '#fd79a8'
+            ],
+            
+            minActiveMembers: 3     // グループ停止条件：アクティブメンバーがこの数未満で停止
+        };
+
+        // ============================================
+        // 20 Newsgroups データセットに基づくトピック定義
+        // 各トピックは6次元の重みベクトルで表現（式1に対応）
+        // weights配列: [Politics, Tech, Sports, Science, Religion, Commerce]
+        // ============================================
+        const NEWSGROUP_TOPICS = [
+            // 政治系トピック（Politics次元が高い）
+            { name: 'talk.politics.misc', weights: [0.65, 0.05, 0.02, 0.08, 0.10, 0.10] },
+            { name: 'talk.politics.guns', weights: [0.55, 0.08, 0.05, 0.02, 0.15, 0.15] },
+            { name: 'talk.politics.mideast', weights: [0.50, 0.05, 0.02, 0.05, 0.30, 0.08] },
+            
+            // 技術系トピック（Tech次元が高い）
+            { name: 'comp.graphics', weights: [0.02, 0.70, 0.02, 0.18, 0.02, 0.06] },
+            { name: 'comp.os.ms-windows', weights: [0.03, 0.72, 0.02, 0.10, 0.02, 0.11] },
+            { name: 'comp.sys.mac.hardware', weights: [0.02, 0.68, 0.02, 0.12, 0.02, 0.14] },
+            { name: 'comp.windows.x', weights: [0.02, 0.75, 0.02, 0.13, 0.02, 0.06] },
+            
+            // スポーツ系トピック（Sports次元が高い）
+            { name: 'rec.sport.baseball', weights: [0.05, 0.03, 0.70, 0.02, 0.02, 0.18] },
+            { name: 'rec.sport.hockey', weights: [0.04, 0.03, 0.72, 0.02, 0.02, 0.17] },
+            { name: 'rec.autos', weights: [0.05, 0.15, 0.45, 0.10, 0.02, 0.23] },
+            { name: 'rec.motorcycles', weights: [0.04, 0.12, 0.48, 0.08, 0.02, 0.26] },
+            
+            // 科学系トピック（Science次元が高い）
+            { name: 'sci.space', weights: [0.10, 0.18, 0.02, 0.60, 0.02, 0.08] },
+            { name: 'sci.med', weights: [0.08, 0.12, 0.05, 0.58, 0.05, 0.12] },
+            { name: 'sci.electronics', weights: [0.03, 0.30, 0.02, 0.52, 0.02, 0.11] },
+            { name: 'sci.crypt', weights: [0.12, 0.28, 0.02, 0.48, 0.02, 0.08] },
+            
+            // 宗教系トピック（Religion次元が高い）
+            { name: 'soc.religion.christian', weights: [0.15, 0.02, 0.02, 0.03, 0.70, 0.08] },
+            { name: 'talk.religion.misc', weights: [0.18, 0.03, 0.02, 0.05, 0.65, 0.07] },
+            { name: 'alt.atheism', weights: [0.20, 0.05, 0.02, 0.15, 0.50, 0.08] },
+            
+            // 商業系トピック（Commerce次元が高い）
+            { name: 'misc.forsale', weights: [0.05, 0.15, 0.10, 0.05, 0.02, 0.63] },
+            { name: 'rec.autos.marketplace', weights: [0.03, 0.10, 0.25, 0.05, 0.02, 0.55] },
+        ];
+
+        // ============================================
+        // グローバル変数
+        // シミュレーションの状態を管理
+        // ============================================
+        let groups = [];                    // グループの配列
+        let selectedGroupId = 0;            // 現在選択中のグループID
+        let paused = false;                 // 一時停止フラグ
+        let totalTopicChanges = 0;          // トピック遷移の総数
+        let leftOutLog = [];                // 離脱ログ
+        let singleGroupMode = false;        // モード切替: false=4グループ, true=1グループ
+
+        // ============================================
+        // Boidsアルゴリズムのパラメータ
+        // 興味レベルによって自動的に調整される
+        // ============================================
+        let interestSensitivity = 1.0;      // 興味が行動に与える影響の強さ
+        
+        // 基本パラメータ（固定値 - 興味で自動調整される）
+        const cohesionBase = 2.0;           // 結合力の基本値
+        const alignmentBase = 0.8;          // 整列力の基本値
+        const separationBase = 1.0;         // 分離力の基本値
+        const interestPullBase = 0.5;       // 興味引力の基本値
+        
+        // 離脱検出パラメータ
+        let leftOutThreshold = 1.0;         // 離脱判定閾値 v₀（式7で使用）
+        let leftOutCheckFrequency = 45;     // 離脱チェック頻度（フレーム数）
+        
+        // 探索パラメータ
+        let heatDecayRate = 0.004;          // ヒート減衰率（遅くして循環防止）
+        let momentumWeight = 0.3;           // モメンタムの重み（慣性の強さ）
+
+        // ============================================
+        // ユーティリティ関数
+        // ============================================
+        
+        /**
+         * K次元ベクトルを2D座標に射影する関数
+         * 各次元を円周上の角度に対応させて2D座標を計算
+         * トピックの空間配置に使用（類似トピックを近くに配置）
+         * 
+         * @param {Array} vector - K次元の重みベクトル
+         * @returns {Object} {x, y} - 2D座標
+         */
+        function projectTo2D(vector) {
+            let x = 0, y = 0;
+            const K = vector.length;
+            for (let k = 0; k < K; k++) {
+                // 各次元kを角度 2πk/K に対応させる
+                let angle = (k / K) * Math.PI * 2;
+                x += vector[k] * Math.cos(angle);
+                y += vector[k] * Math.sin(angle);
+            }
+            return { x, y };
+        }
+
+        /**
+         * トピックをベクトル類似度に基づいてグリッドに配置する関数
+         * 類似したトピックが隣接するように配置
+         * 
+         * @param {Array} topics - トピックの配列
+         * @param {number} cols - グリッドの列数
+         * @param {number} rows - グリッドの行数
+         * @returns {Array} 配置結果の配列
+         */
+        function arrangeTopicsByProjection(topics, cols, rows) {
+            // Step 1: 全トピックを2Dに射影
+            let projected = topics.map((t, i) => ({
+                originalIndex: i, topic: t, pos: projectTo2D(t.weights)
+            }));
+            
+            // Step 2: 座標の正規化（0-1の範囲に）
+            let minX = Math.min(...projected.map(p => p.pos.x));
+            let maxX = Math.max(...projected.map(p => p.pos.x));
+            let minY = Math.min(...projected.map(p => p.pos.y));
+            let maxY = Math.max(...projected.map(p => p.pos.y));
+            
+            const rangeX = maxX - minX || 1;
+            const rangeY = maxY - minY || 1;
+            projected.forEach(p => {
+                p.normX = (p.pos.x - minX) / rangeX;
+                p.normY = (p.pos.y - minY) / rangeY;
+            });
+            
+            // Step 3: グリッド位置でソート
+            let result = [];
+            let occupied = new Set();
+            
+            projected.sort((a, b) => {
+                let aCol = Math.floor(a.normX * cols * 0.999);
+                let aRow = Math.floor(a.normY * rows * 0.999);
+                let bCol = Math.floor(b.normX * cols * 0.999);
+                let bRow = Math.floor(b.normY * rows * 0.999);
+                if (aRow !== bRow) return aRow - bRow;
+                return aCol - bCol;
+            });
+            
+            // Step 4: 各トピックを最も近い空きセルに配置（スパイラル探索）
+            for (let p of projected) {
+                let targetCol = Math.floor(p.normX * cols * 0.999);
+                let targetRow = Math.floor(p.normY * rows * 0.999);
+                targetCol = Math.max(0, Math.min(cols - 1, targetCol));
+                targetRow = Math.max(0, Math.min(rows - 1, targetRow));
+                
+                let placed = false;
+                for (let radius = 0; radius <= Math.max(cols, rows) && !placed; radius++) {
+                    for (let dy = -radius; dy <= radius && !placed; dy++) {
+                        for (let dx = -radius; dx <= radius && !placed; dx++) {
+                            if (Math.abs(dx) !== radius && Math.abs(dy) !== radius) continue;
+                            let c = targetCol + dx, r = targetRow + dy;
+                            if (c >= 0 && c < cols && r >= 0 && r < rows) {
+                                let key = `${c},${r}`;
+                                if (!occupied.has(key)) {
+                                    occupied.add(key);
+                                    result.push({ topic: p.topic, gridX: c, gridY: r });
+                                    placed = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return result;
+        }
+
+        // ============================================
+        // Topicクラス
+        // 議論トピックを表現（論文の式1に対応）
+        // ============================================
+        class Topic {
+            /**
+             * @param {number} id - トピックID
+             * @param {number} gridX - グリッド上のX位置
+             * @param {number} gridY - グリッド上のY位置
+             * @param {Object} newsgroup - トピックデータ（name, weights）
+             */
+            constructor(id, gridX, gridY, newsgroup) {
+                this.id = id;
+                this.gridX = gridX;
+                this.gridY = gridY;
+                this.name = newsgroup.name;
+                
+                // トピックベクトル T_n の生成（式1）
+                // 元の重みに小さなランダム変動を加える
+                this.vector = newsgroup.weights.map(w => {
+                    let varied = w + (Math.random() - 0.5) * 0.05;
+                    return Math.max(0.01, Math.min(0.95, varied));
+                });
+                
+                // 正規化（合計が1になるように）
+                let sum = this.vector.reduce((a, b) => a + b, 0);
+                this.vector = this.vector.map(v => v / sum);
+                
+                // 主要次元（最大重みを持つ次元）を特定
+                this.primaryDim = this.vector.indexOf(Math.max(...this.vector));
+                
+                this.heat = 0;          // 訪問熱（最近訪問されたかを示す）
+                this.visitCount = 0;    // 訪問回数
+            }
+            
+            /** トピックに入った時の処理 */
+            onEnter() { 
+                this.heat = 1.0; 
+                this.visitCount++; 
+            }
+            
+            /** 熱の減衰処理（毎フレーム呼ばれる） */
+            coolDown() { 
+                this.heat = Math.max(0, this.heat - heatDecayRate); 
+            }
+            
+            /** 短縮名を取得（例: "talk.politics.misc" → "misc"） */
+            getShortName() { 
+                return this.name.split('.').pop(); 
+            }
+        }
+
+        // ============================================
+        // Memberクラス
+        // グループメンバー（Boid）を表現
+        // 論文の式2-5に対応
+        // ============================================
+        class Member {
+            /**
+             * @param {number} groupId - 所属グループID
+             * @param {number} memberId - メンバーID
+             */
+            constructor(groupId, memberId, isFacilitator=false) {
+                this.groupId = groupId;
+                this.memberId = memberId;
+                this.isFacilitator = isFacilitator; // ファシリテーターフラグ [cite: 434]
+                this.color = isFacilitator ? '#ffffff' : CONFIG.memberColors[memberId % CONFIG.memberColors.length];
+
+                // 位置・速度・加速度ベクトル（p5.jsのVector使用）
+                this.pos = createVector(0, 0);  // 位置 p_i
+                this.vel = createVector(0, 0);  // 速度 v_i
+                this.acc = createVector(0, 0);  // 加速度
+                
+                // 移動パラメータ（シングルグループモードでは大きくする）
+                this.maxSpeed = singleGroupMode ? 1.4 : 0.9;
+                this.maxForce = singleGroupMode ? 0.07 : 0.05;
+                this.leftOut = false;  // 離脱フラグ
+                this.riskLevel = 0;    // 離脱リスクレベル
+                this.velocityHistory = []; // トレンド分析用
+                
+                // ============================================
+                // 潜在興味ベクトル W_i の生成（式2）
+                // メンバーごとに異なる興味プロファイルを持つ
+                // ============================================
+                this.latentInterests = [];
+                this.initInterests(); // 興味の初期化
+                
+                // 主要興味（最も興味のある次元）をランダムに選択
+                this.primaryInterest = Math.floor(random(CONFIG.numDimensions));
+                // 副次興味（2番目に興味のある次元）
+                this.secondaryInterest = (this.primaryInterest + Math.floor(random(1, CONFIG.numDimensions))) % CONFIG.numDimensions;
+                // this.normalizeInterests();
+                
+                this.currentInterest = 0;   // 現在のトピックへの興味 u_in
+                this.currentVelocity = 0;   // 現在の速度 v_i
+            }
+
+            initInterests() {
+                if (this.isFacilitator) {
+                    // 原則3. 公平性の最適化: 全方位にバランスの取れた興味を持つ [cite: 257-258, 415]
+                    for (let k = 0; k < CONFIG.numDimensions; k++) {
+                        this.latentInterests.push(0.5);
+                    }
+                } else {
+                    // 通常メンバーは特定の分野に強い興味を持つ [cite: 254]
+                    let primary = Math.floor(random(CONFIG.numDimensions));
+                    let secondary = (primary + Math.floor(random(1, CONFIG.numDimensions))) % CONFIG.numDimensions;
+
+                    for (let k = 0; k < CONFIG.numDimensions; k++) {
+                        if (k === primary) {
+                            this.latentInterests.push(0.45 + Math.random() * 0.15); // 45-60%
+                        } else if (k === secondary) {
+                            this.latentInterests.push(0.15 + Math.random() * 0.12); // 15-27%
+                        } else {
+                            this.latentInterests.push(0.02 + Math.random() * 0.08); // 2-10%
+                        }
+                    }
+                }
+
+                // ベクトルの正規化（合計を1にする）
+                let sum = this.latentInterests.reduce((a, b) => a + b, 0);
+                this.latentInterests = this.latentInterests.map(v => v / sum);
+            }
+
+            // 速度トレンドの計算 (早期警告シグナル) [cite: 242]
+            getVelocityTrend() {
+                if (this.velocityHistory.length < 10) return 0;
+                let first = this.velocityHistory[0];
+                let last = this.velocityHistory[this.velocityHistory.length - 1];
+                return (last - first) / this.velocityHistory.length; // 負の傾き = エンゲージメント低下 [cite: 242]
+            }
+
+            updateRiskLevel(groupVelocity, thresholds) {
+                if (this.leftOut) return;
+                
+                let v_lb = groupVelocity - this.currentVelocity;
+                
+                if (v_lb > thresholds.leftout) {
+                    this.riskLevel = 3;
+                    this.leftOut = true; // 離脱確定 [cite: 240]
+                } else if (v_lb > thresholds.critical) {
+                    this.riskLevel = 2; // 危機状態 (ファシリテーター介入対象) [cite: 235-237]
+                } else if (v_lb > thresholds.safe || this.getVelocityTrend() < -0.01) {
+                    this.riskLevel = 1; // リスク状態 (監視対象) [cite: 232-234]
+                } else {
+                    this.riskLevel = 0; // 安全 [cite: 231]
+                }
+            }
+            
+            /**
+             * トピックへの興味度を計算（式3）
+             * u_in = Σ(w_ik × x_nk) - 内積計算
+             * 
+             * @param {Topic} topic - 対象トピック
+             * @returns {number} 興味度
+             */
+            calculateInterest(topic) {
+                let dotProduct = 0;
+                for (let k = 0; k < CONFIG.numDimensions; k++) {
+                    dotProduct += this.latentInterests[k] * topic.vector[k];
+                }
+                this.currentInterest = dotProduct * CONFIG.maxInterest;
+                return this.currentInterest;
+            }
+            
+            /**
+             * 速度を計算（式5）
+             * v_i = α × u_in × V_max / L_max
+             * 
+             * @returns {number} 速度
+             */
+            calculateVelocity() {
+                this.currentVelocity = this.currentInterest * CONFIG.maxVelocity / CONFIG.maxInterest;
+                return this.currentVelocity;
+            }
+            
+            /** 正規化された興味度（0-1）を取得 */
+            getInterestNormalized() { 
+                return this.currentInterest / CONFIG.maxInterest; 
+            }
+            
+            /** 力を加える */
+            applyForce(force) { 
+                this.acc.add(force); 
+            }
+            
+            /**
+             * 興味に基づく移動方向を計算
+             * 興味の高いトピックに向かう力を計算
+             * 
+             * @param {Array} topics - トピック配列
+             * @param {Object} bounds - 境界
+             * @param {number} gridCols - グリッド列数
+             * @param {number} gridRows - グリッド行数
+             * @returns {p5.Vector} 移動方向ベクトル
+             */
+            getPreferredDirection(topics, bounds, gridCols, gridRows) {
+                let pullX = 0, pullY = 0, totalWeight = 0;
+                let tileW = bounds.w / gridCols;
+                let tileH = bounds.h / gridRows;
+                
+                for (let topic of topics) {
+                    // トピックとの興味マッチ度を計算
+                    let match = 0;
+                    for (let k = 0; k < CONFIG.numDimensions; k++) {
+                        match += this.latentInterests[k] * topic.vector[k];
+                    }
+                    
+                    let topicCenterX = bounds.x + (topic.gridX + 0.5) * tileW;
+                    let topicCenterY = bounds.y + (topic.gridY + 0.5) * tileH;
+                    
+                    // 熱ペナルティ（最近訪問したトピックは避ける）
+                    let heatPenalty = topic.heat * 0.7;
+                    let weight = match * match * (1 - heatPenalty);
+                    
+                    // 未訪問ボーナス
+                    if (topic.visitCount === 0) weight += 0.1;
+                    weight = Math.max(0.01, weight);
+                    
+                    pullX += topicCenterX * weight;
+                    pullY += topicCenterY * weight;
+                    totalWeight += weight;
+                }
+                
+                if (totalWeight > 0) {
+                    let pull = createVector(pullX / totalWeight - this.pos.x, pullY / totalWeight - this.pos.y);
+                    pull.normalize();
+                    return pull;
+                }
+                return createVector(0, 0);
+            }
+            
+            /**
+             * Boids: 結合力（Cohesion）
+             * 近隣のメンバーの中心に向かう力
+             * 論文の「群れの中心に向かう傾向」に対応
+             */
+            cohesion(members) {
+                let steering = createVector(0, 0);
+                let total = 0;
+                let radius = singleGroupMode ? 80 : 50;  // 感知半径
+                
+                for (let other of members) {
+                    if (other !== this && !other.leftOut) {
+                        let d = p5.Vector.dist(this.pos, other.pos);
+                        if (d < radius && d > 0) { 
+                            steering.add(other.pos); 
+                            total++; 
+                        }
+                    }
+                }
+                if (total > 0) {
+                    steering.div(total);
+                    steering.sub(this.pos);
+                    steering.setMag(this.maxSpeed);
+                    steering.sub(this.vel);
+                    steering.limit(this.maxForce);
+                }
+                return steering;
+            }
+            
+            /**
+             * Boids: 整列力（Alignment）
+             * 近隣のメンバーと同じ方向に向かう力
+             * 論文の「議論についていく意欲」に対応
+             */
+            alignment(members) {
+                let steering = createVector(0, 0);
+                let total = 0;
+                let radius = singleGroupMode ? 65 : 40;
+                
+                for (let other of members) {
+                    if (other !== this && !other.leftOut) {
+                        let d = p5.Vector.dist(this.pos, other.pos);
+                        if (d < radius && d > 0) { 
+                            steering.add(other.vel); 
+                            total++; 
+                        }
+                    }
+                }
+                if (total > 0) {
+                    steering.div(total);
+                    steering.setMag(this.maxSpeed);
+                    steering.sub(this.vel);
+                    steering.limit(this.maxForce);
+                }
+                return steering;
+            }
+            
+            /**
+             * Boids: 分離力（Separation）
+             * 近すぎるメンバーから離れる力
+             * 論文の「自分の興味方向にシフトする傾向」に対応
+             */
+            separation(members) {
+                let steering = createVector(0, 0);
+                let radius = singleGroupMode ? 25 : 15;
+                
+                for (let other of members) {
+                    if (other !== this) {
+                        let d = p5.Vector.dist(this.pos, other.pos);
+                        if (d < radius && d > 0) {
+                            let diff = p5.Vector.sub(this.pos, other.pos);
+                            diff.div(d);
+                            steering.add(diff);
+                        }
+                    }
+                }
+                steering.limit(this.maxForce);
+                return steering;
+            }
+            
+            /**
+             * Boidsの力を統合して移動を計算
+             * 
+             * 【シングルリーダーモデル】
+             * 
+             * 現実の議論では：
+             * - そのトピックに最も詳しい/興味がある人が自然とリードする
+             * - 他のメンバーはリーダーについていく（興味度に応じて）
+             * - 興味が低い人は徐々に会話から離脱する
+             * 
+             * リーダー（★）: 現在のトピックに最も興味があるメンバー
+             * - 議論の方向を決定（隣接トピックで自分の興味に合うものへ）
+             * - グループの中心に留まる（強い結合力）
+             * 
+             * フォロワー: リーダー以外のメンバー
+             * - リーダーについていく（興味度に比例）
+             * - 興味が高い → 積極的に追従
+             * - 興味が低い → 追従が弱い、徐々に離脱
+             * 
+             * @param {Group} group - 所属グループ（リーダー情報取得用）
+             */
+            flock(members, topics, bounds, groupMomentum, gridCols, gridRows, group) {
+                // 離脱メンバーは動かない
+                if (this.leftOut) { 
+                    this.vel.set(0, 0); 
+                    this.acc.set(0, 0); 
+                    return; 
+                }
+                
+                // ============================================
+                // 興味レベルの計算
+                // ============================================
+                let interestNorm = this.getInterestNormalized();
+                let adjustedInterest = Math.min(1, Math.max(0, interestNorm * interestSensitivity));
+                
+                // 現在のリーダーを取得
+                let leader = group.getCurrentLeader();
+                let isLeader = (leader === this);
+                
+                // ============================================
+                // 基本Boids力の計算
+                // ============================================
+                let coh = this.cohesion(members);
+                let ali = this.alignment(members);
+                let sep = this.separation(members);
+                
+                // ============================================
+                // リーダーの行動
+                // - 議論を自分の興味方向へ導く（最優先）
+                // - Boids力は抑制（リーダーが引っ張られないように）
+                // ============================================
+                let leaderSteer = createVector(0, 0);
+                if (isLeader && group.targetTopic) {
+                    // リーダーは目標トピックへ強く向かう
+                    leaderSteer = group.getDirectionToTopic(group.targetTopic, this);
+                    leaderSteer.mult(this.maxForce * 3.5);  // 強い！
+                    
+                    // リーダーのBoids力を大幅に減衰（引っ張られ防止）
+                    coh.mult(0.15);  // 結合力をほぼ無効化
+                    ali.mult(0.1);   // 整列力をほぼ無効化
+                    sep.mult(0.4);   // 分離は少し残す
+                }
+                
+                // ============================================
+                // フォロワーの行動
+                // - リーダーの位置についていく
+                // - リーダーの進行方向にも追従（重要！）
+                // ============================================
+                let followLeader = createVector(0, 0);
+                let followDirection = createVector(0, 0);
+                
+                if (!isLeader && leader) {
+                    // 1. リーダーの位置へ向かう
+                    followLeader = p5.Vector.sub(leader.pos, this.pos);
+                    if (followLeader.mag() > 5) {
+                        followLeader.normalize();
+                        let followStrength = 0.3 + adjustedInterest * 1.0;
+                        followLeader.mult(this.maxForce * followStrength);
+                    } else {
+                        followLeader.mult(0);
+                    }
+                    
+                    // 2. リーダーの進行方向にも追従（NEW!）
+                    // これによりフォロワーはリーダーと同じ方向に動く
+                    if (group.targetTopic) {
+                        followDirection = group.getDirectionToTopic(group.targetTopic, this);
+                        let dirStrength = 0.5 + adjustedInterest * 1.5;
+                        followDirection.mult(this.maxForce * dirStrength);
+                    }
+                }
+                
+                // ============================================
+                // 興味に基づくBoids力の重み付け（フォロワーのみ）
+                // ============================================
+                if (!isLeader) {
+                    // 【結合力 Cohesion】
+                    let cohesionFactor = 0.1 + adjustedInterest * 0.7;
+                    coh.mult(cohesionBase * cohesionFactor);
+                    
+                    // 【整列力 Alignment】
+                    let alignmentFactor = 0.2 + adjustedInterest * 0.6;
+                    ali.mult(alignmentBase * alignmentFactor);
+                    
+                    // 【分離力 Separation】
+                    let separationFactor = 1.5 - adjustedInterest * 1.2;
+                    sep.mult(separationBase * separationFactor);
+                }
+                
+                // 【放浪力 Wander】リーダーはなし、フォロワーは興味低いほど強い
+                let wander = createVector(0, 0);
+                if (!isLeader) {
+                    let wanderStrength = (1 - adjustedInterest) * 0.05 * interestSensitivity;
+                    wander = p5.Vector.random2D().mult(wanderStrength);
+                }
+                
+                // モメンタム（慣性）
+                // リーダー: 目標方向と一致する成分のみ使用
+                // フォロワー: 通常の慣性
+                let mom = createVector(0, 0);
+                if (isLeader && group.targetTopic) {
+                    // リーダーの慣性は目標方向に沿ったものだけ
+                    let targetDir = group.getDirectionToTopic(group.targetTopic, this);
+                    let dot = groupMomentum.dot(targetDir);
+                    if (dot > 0) {
+                        mom = targetDir.copy().mult(dot * momentumWeight * this.maxForce * 0.5);
+                    }
+                } else if (!isLeader) {
+                    mom = groupMomentum.copy();
+                    let momFactor = 0.3 + adjustedInterest * 0.4;
+                    mom.mult(momentumWeight * this.maxForce * momFactor);
+                }
+                
+                // ============================================
+                // 全ての力を適用
+                // ============================================
+                this.applyForce(leaderSteer);   // リーダーの舵取り（最優先）
+                this.applyForce(followLeader);  // リーダー位置への追従
+                this.applyForce(followDirection); // リーダー方向への追従（NEW!）
+                this.applyForce(coh);           // 結合力
+                this.applyForce(ali);           // 整列力
+                this.applyForce(sep);           // 分離力
+                this.applyForce(wander);        // 放浪力
+                this.applyForce(mom);           // モメンタム
+                
+                // 境界からの反発力
+                let margin = 8, force = 0.08, b = bounds;
+                if (this.pos.x < b.x + margin) this.applyForce(createVector(force, 0));
+                if (this.pos.x > b.x + b.w - margin) this.applyForce(createVector(-force, 0));
+                if (this.pos.y < b.y + margin) this.applyForce(createVector(0, force));
+                if (this.pos.y > b.y + b.h - margin) this.applyForce(createVector(0, -force));
+            }
+            
+            /** 位置の更新 */
+            update() {
+                if (this.leftOut) return;
+                
+                this.vel.add(this.acc);
+                
+                // 速度を興味レベルに応じて制限
+                let speedMult = map(this.currentVelocity, 0, CONFIG.maxVelocity, 0.4, 1.0);
+                this.vel.limit(this.maxSpeed * speedMult);
+                
+                this.pos.add(this.vel);
+                this.acc.mult(0);  // 加速度をリセット
+            }
+            
+            /**
+             * メンバーの描画
+             * - リーダー: 星印付き、大きめの三角形
+             * - フォロワー: 通常の三角形（興味レベルで大きさ変化）
+             * - 離脱: パルスする円と❄️アイコン
+             * 
+             * @param {boolean} isLeader - リーダーかどうか
+             */
+            draw(groupColor, isLeader = false) {
+                push();
+                translate(this.pos.x, this.pos.y);
+                
+                // スケール係数（シングルグループモードは大きく表示）
+                let scaleFactor = singleGroupMode ? 1.5 : 1.0;
+                
+                if (this.leftOut) {
+                    // 離脱メンバーの描画（パルスアニメーション）
+                    let pulse = sin(frameCount * 0.12) * 3 + 14 * scaleFactor;
+                    noStroke(); 
+                    fill(255, 60, 60, 40);
+                    ellipse(0, 0, pulse + 8 * scaleFactor, pulse + 8 * scaleFactor);
+                    fill(70, 70, 80); 
+                    stroke(255, 80, 80); 
+                    strokeWeight(2);
+                    ellipse(0, 0, pulse, pulse);
+                    stroke(255, 120, 120); 
+                    strokeWeight(2);
+                    let x = pulse * 0.22;
+                    line(-x, -x, x, x); 
+                    line(-x, x, x, -x);
+                    fill(255); 
+                    noStroke(); 
+                    textSize(8 * scaleFactor); 
+                    textAlign(CENTER, CENTER);
+                    text('❄️', 0, -pulse/2 - 5 * scaleFactor);
+                } else {
+                    // アクティブメンバーの描画
+                    let interestNorm = this.getInterestNormalized();
+                    
+                    // リーダーは大きく表示
+                    let leaderBonus = isLeader ? 1.4 : 1.0;
+                    let size = map(interestNorm, 0, 1, 4, 10) * scaleFactor * leaderBonus;
+                    let brightness = map(interestNorm, 0, 1, 0.35, 1.0);
+                    
+                    // 移動方向に回転
+                    if (this.vel.mag() > 0.05) rotate(this.vel.heading());
+                    
+                    let c = color(this.color);
+                    
+                    // リーダーには光彩効果
+                    if (isLeader) {
+                        noStroke();
+                        fill(red(c), green(c), blue(c), 50);
+                        ellipse(0, 0, size * 3, size * 3);
+                    }
+                    
+                    fill(red(c) * brightness + 30, green(c) * brightness + 30, blue(c) * brightness + 30, 220);
+                    stroke(red(c), green(c), blue(c));
+                    strokeWeight(isLeader ? 2.5 * scaleFactor : 1.5 * scaleFactor);
+                    
+                    // 三角形を描画
+                    beginShape();
+                    vertex(size, 0);
+                    vertex(-size * 0.5, size * 0.5);
+                    vertex(-size * 0.5, -size * 0.5);
+                    endShape(CLOSE);
+                    
+                    // リーダーには星マーク
+                    if (isLeader) {
+                        fill(255, 255, 100);
+                        noStroke();
+                        textSize(6 * scaleFactor);
+                        textAlign(CENTER, CENTER);
+                        // 回転をリセットして星を表示
+                        rotate(-this.vel.heading());
+                        text('★', 0, -size - 4 * scaleFactor);
+                    }
+                }
+                pop();
+            }
+
+            draw(groupColor, isLeader) {
+                push();
+                translate(this.pos.x, this.pos.y);
+                
+                let scaleFactor = singleGroupMode ? 1.5 : 1.0;
+
+                // 1. ファシリテーターの描画 [cite: 442]
+                if (this.isFacilitator) {
+                    this.drawFacilitator(scaleFactor);
+                } 
+                // 2. 離脱メンバーの描画 [cite: 240]
+                else if (this.leftOut) {
+                    this.drawFrozenState(scaleFactor);
+                } 
+                // 3. 通常メンバー（リスク状態に応じたハイライト付き）[cite: 231-236, 444]
+                else {
+                    this.drawRiskHighlight(scaleFactor);
+                    this.drawMemberBody(groupColor, isLeader, scaleFactor);
+                }
+                pop();
+            }
+
+            /**
+             * ファシリテーターの形状描画 (六角形) 
+             */
+            drawFacilitator(s) {
+                fill(255); 
+                stroke(200, 100, 255);
+                strokeWeight(2);
+                beginShape();
+                for (let i = 0; i < 6; i++) {
+                    let angle = TWO_PI / 6 * i;
+                    vertex(cos(angle) * 8 * s, sin(angle) * 8 * s);
+                }
+                endShape(CLOSE);
+                textAlign(CENTER, CENTER);
+                textSize(8 * s);
+                text('⚖️', 0, 0); 
+            }
+
+            /**
+             * 離脱・凍結状態の描画 [cite: 240]
+             */
+            drawFrozenState(s) {
+                let pulse = sin(frameCount * 0.12) * 3 + 14 * s;
+                noStroke(); 
+                fill(255, 60, 60, 40);
+                ellipse(0, 0, pulse + 8 * s, pulse + 8 * s);
+                fill(70, 70, 80); 
+                stroke(255, 80, 80); 
+                strokeWeight(2);
+                ellipse(0, 0, pulse, pulse);
+                fill(255); 
+                noStroke(); 
+                textSize(8 * s); 
+                textAlign(CENTER, CENTER);
+                text('❄️', 0, 0);
+            }
+
+            /**
+             * リスク状態のハイライト (ハロー) [cite: 231-236, 444]
+             */
+            drawRiskHighlight(s) {
+                noStroke();
+                if (this.riskLevel === 1) { // リスク状態 (黄) [cite: 233]
+                    fill(255, 255, 0, 80);
+                    ellipse(0, 0, 20 * s, 20 * s);
+                } else if (this.riskLevel === 2) { // 危機状態 (橙) [cite: 236]
+                    fill(255, 100, 0, 120);
+                    ellipse(0, 0, 25 * s, 25 * s);
+                }
+            }
+
+            /**
+             * 通常メンバーの形状描画 (三角形)
+             */
+            drawMemberBody(groupColor, isLeader, scaleFactor) {
+                let interestNorm = this.currentInterest / CONFIG.maxInterest;
+                let leaderBonus = isLeader ? 1.4 : 1.0;
+                let size = map(interestNorm, 0, 1, 4, 10) * scaleFactor * leaderBonus;
+                let brightness = map(interestNorm, 0, 1, 0.35, 1.0);
+                
+                if (this.vel.mag() > 0.05) rotate(this.vel.heading());
+                
+                let c = color(this.color);
+                if (isLeader) {
+                    noStroke();
+                    fill(red(c), green(c), blue(c), 50);
+                    ellipse(0, 0, size * 3, size * 3);
+                }
+                
+                fill(red(c) * brightness + 30, green(c) * brightness + 30, blue(c) * brightness + 30, 220);
+                stroke(red(c), green(c), blue(c));
+                strokeWeight(isLeader ? 2.5 * scaleFactor : 1.5 * scaleFactor);
+                
+                beginShape();
+                vertex(size, 0);
+                vertex(-size * 0.5, size * 0.5);
+                vertex(-size * 0.5, -size * 0.5);
+                endShape(CLOSE);
+                
+                if (isLeader) {
+                    rotate(-this.vel.heading());
+                    fill(255, 255, 100);
+                    noStroke();
+                    textSize(6 * scaleFactor);
+                    textAlign(CENTER, CENTER);
+                    text('★', 0, -size - 4 * scaleFactor);
+                }
+            }
+
+            // ファシリテーターは六角形で表現 [cite: 442]
+            drawFacilitator(s) {
+                fill(255, 200, 255); // 少し紫がかった白
+                stroke(200, 100, 255);
+                strokeWeight(2);
+                beginShape();
+                for (let i = 0; i < 6; i++) {
+                    let angle = TWO_PI / 6 * i;
+                    vertex(cos(angle) * 8 * s, sin(angle) * 8 * s);
+                }
+                endShape(CLOSE);
+                // アイコン表示
+                textAlign(CENTER, CENTER);
+                textSize(8 * s);
+                text('⚖️', 0, 0); 
+            }
+
+            // リスクレベルに応じたハロー（光輪）[cite: 233, 236, 444]
+            drawRiskHighlight(s) {
+                noStroke();
+                if (this.riskLevel === 1) { // Risk状態
+                    fill(255, 255, 0, 80); // 黄色 [cite: 233]
+                    ellipse(0, 0, 20 * s, 20 * s);
+                } else if (this.riskLevel === 2) { // Critical状態
+                    fill(255, 100, 0, 120); // 橙色 [cite: 236]
+                    ellipse(0, 0, 25 * s, 25 * s);
+                }
+            }
+
+        }
+
+        // ============================================
+        // Groupクラス
+        // 議論グループを表現
+        // ============================================
+        class Group {
+            /**
+             * @param {number} id - グループID
+             * @param {Object} bounds - 表示領域 {x, y, w, h}
+             */
+            constructor(id, bounds) {
+                this.id = id;
+                this.bounds = bounds;
+                this.color = CONFIG.groupColors[id];
+                this.members = [];
+                this.topics = [];
+                this.currentTopicIndex = 0;
+                this.lastLeftOutCheck = 0;
+                this.halted = false;  // グループ停止フラグ
+                this.facilitatorActive = false; // 介入モードフラグ [cite: 280, 439]
+                this.stableFrames = 0; // ヒステリシス用カウンタ [cite: 379]
+
+                this.facilitator = new Member(id, 999, true);
+                this.members.push(this.facilitator);
+
+                // 介入用閾値設定 [cite: 232-238]
+                this.thresholds = {
+                    safe: 0.5,
+                    critical: 0.8,
+                    leftout: 1.0 // v0
+                };
+                
+                this.momentum = createVector(0, 0);
+                this.prevCentroid = null;
+                
+                // 【循環防止用】
+                this.previousTopicId = -1;          // 直前のトピックID（戻り防止）
+                this.topicSettleFrames = 0;         // 現在のトピックに滞在したフレーム数
+                this.settleThreshold = 60;          // 安定とみなすフレーム数
+                this.targetTopic = null;            // リーダーの目標トピック
+                
+                // グリッドサイズ（トピック配置用）
+                if (singleGroupMode) {
+                    this.gridCols = 5;
+                    this.gridRows = 4;
+                } else {
+                    this.gridCols = 5;
+                    this.gridRows = 4;
+                }
+                
+                // 興味履歴（グラフ表示用）
+                this.interestHistory = [];
+                this.topicHistory = [];
+                
+                // トピックを類似度に基づいて配置
+                let arranged = arrangeTopicsByProjection(NEWSGROUP_TOPICS, this.gridCols, this.gridRows);
+                for (let i = 0; i < arranged.length; i++) {
+                    let a = arranged[i];
+                    this.topics.push(new Topic(i, a.gridX, a.gridY, a.topic));
+                }
+                
+                // メンバーを中央付近にランダム配置
+                let centerX = bounds.x + bounds.w / 2;
+                let centerY = bounds.y + bounds.h / 2;
+                
+                for (let i = 0; i < CONFIG.groupSize; i++) {
+                    let member = new Member(id, i);
+                    member.pos = createVector(centerX + random(-25, 25), centerY + random(-25, 25));
+                    member.vel = p5.Vector.random2D().mult(0.2);
+                    this.members.push(member);
+                }
+                
+                this.centroid = createVector(centerX, centerY);
+                this.prevCentroid = this.centroid.copy();
+                
+                // 初期トピックの設定
+                this.updateCurrentTopic();
+                if (this.topics[this.currentTopicIndex]) {
+                    this.topics[this.currentTopicIndex].onEnter();
+                }
+                this.updateMemberInterests();
+                this.recordInterestSnapshot();
+            }
+
+            // グループ健康度の診断と介入判定 [cite: 350-356, 438]
+            calculateGroupHealth() {
+                let vG = this.getGroupVelocity();
+                let atRiskCount = 0;
+
+                for (let m of this.members) {
+                    m.updateRiskLevel(vG, this.thresholds);
+                    if (m.riskLevel >= 1 && !m.isFacilitator) atRiskCount++;
+                }
+
+                // 介入トリガーの判定 [cite: 278, 369]
+                if (!this.facilitatorActive && atRiskCount >= 1) {
+                    this.facilitatorActive = true; // 活性状態へ [cite: 280]
+                    this.stableFrames = 0;
+                } else if (this.facilitatorActive) {
+                    // ヒステリシス（振動防止）: 全員が安全な状態が一定期間続けば解除 [cite: 376-384]
+                    if (atRiskCount === 0) {
+                        this.stableFrames++;
+                        if (this.stableFrames > 60) {
+                            this.facilitatorActive = false; // 休眠状態へ [cite: 288]
+                        }
+                    } else {
+                        this.stableFrames = 0;
+                    }
+                }
+            }
+
+            // ファシリテーターによる「グループ福祉型」スコアリング [cite: 295-316, 440]
+            calculateBalancedScore(candidateTopic) {
+                let activeMembers = this.members.filter(m => !m.leftOut && !m.isFacilitator);
+                if (activeMembers.length === 0) return 0;
+
+                let interests = activeMembers.map(m => m.calculateInterest(candidateTopic));
+
+                // 1. ロールズ的正義: 最も興味が低いメンバーの値を最大化 [cite: 306-307, 318]
+                let minInterest = Math.min(...interests);
+
+                // 2. 平等性: 興味の分散を最小化 [cite: 308-309, 318]
+                let mean = interests.reduce((a, b) => a + b) / interests.length;
+                let variance = interests.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / interests.length;
+
+                // 結合スコア (lambda=0.5で調整) [cite: 311, 318]
+                let lambda = 0.5;
+                let balanceScore = minInterest * (1 - variance * lambda);
+
+                // 熱（繰り返し防止）も考慮 [cite: 312-314]
+                return balanceScore * (1 - candidateTopic.heat * 0.5);
+            }
+
+            // リーダーの意思決定ロジックの拡張 [cite: 345-361]
+            calculateLeaderDirection() {
+                if (this.facilitatorActive) {
+                    // 介入モード: ファシリテーターがバランストピックを選択 [cite: 282, 361]
+                    return this.getFacilitatorSteering();
+                } else {
+                    // 通常モード: 自然なリーダーによる舵取り [cite: 291, 346]
+                    return this.getNaturalLeaderSteering();
+                }
+            }
+            
+            /**
+             * 興味のスナップショットを記録（グラフ用）
+             */
+            recordInterestSnapshot() {
+                let snapshot = this.members.map(m => ({
+                    interest: m.currentInterest,
+                    leftOut: m.leftOut
+                }));
+                this.interestHistory.push(snapshot);
+                this.topicHistory.push(this.currentTopicIndex + 1);
+                
+                // 最新20件のみ保持
+                if (this.interestHistory.length > 20) {
+                    this.interestHistory.shift();
+                    this.topicHistory.shift();
+                }
+            }
+            
+            /**
+             * グループの重心を計算
+             * 【リーダーの影響】リーダーの位置に重みを置く
+             */
+            calculateCentroid() {
+                let sumX = 0, sumY = 0, totalWeight = 0;
+                let leader = this.getCurrentLeader();
+                
+                for (let m of this.members) {
+                    if (!m.leftOut) {
+                        // リーダーは2倍の重み
+                        let weight = (m === leader) ? 2.0 : 1.0;
+                        sumX += m.pos.x * weight;
+                        sumY += m.pos.y * weight;
+                        totalWeight += weight;
+                    }
+                }
+                
+                if (totalWeight > 0) {
+                    this.prevCentroid = this.centroid.copy();
+                    this.centroid.set(sumX / totalWeight, sumY / totalWeight);
+                    
+                    // モメンタムを更新
+                    let delta = p5.Vector.sub(this.centroid, this.prevCentroid);
+                    this.momentum.lerp(delta, 0.15);
+                    if (this.momentum.mag() > 0.01) this.momentum.normalize();
+                }
+            }
+            
+            /**
+             * 現在のリーダーを取得
+             * 【重要】リーダー = 現在のトピックに最も興味があるメンバー
+             * 
+             * 実際の議論でも、そのトピックに詳しい人・興味がある人が
+             * 自然と会話をリードする傾向がある
+             */
+            getCurrentLeader() {
+                let activeMembers = this.members.filter(m => !m.leftOut);
+                if (activeMembers.length === 0) return null;
+                
+                // 現在のトピックへの興味が最も高いメンバーをリーダーとする
+                return activeMembers.reduce((best, m) => 
+                    m.currentInterest > best.currentInterest ? m : best
+                );
+            }
+            
+            /**
+             * 隣接トピックを取得
+             * 議論は通常、関連するトピックへ自然に流れる
+             * 
+             * @param {Topic} currentTopic - 現在のトピック
+             * @returns {Array} 隣接トピックの配列
+             */
+            getAdjacentTopics(currentTopic) {
+                let adjacent = [];
+                for (let topic of this.topics) {
+                    // グリッド上で隣接しているか（上下左右と斜め）
+                    let dx = Math.abs(topic.gridX - currentTopic.gridX);
+                    let dy = Math.abs(topic.gridY - currentTopic.gridY);
+                    if (dx <= 1 && dy <= 1 && topic.id !== currentTopic.id) {
+                        adjacent.push(topic);
+                    }
+                }
+                return adjacent;
+            }
+            
+            /**
+             * リーダーが議論を導く方向を計算
+             * 
+             * 【現実的な議論の流れ】
+             * リーダーは以下を考慮して次の話題を選ぶ：
+             * 1. 現在のトピックから自然につながる（隣接トピック優先）
+             * 2. 自分の興味・専門に合う方向
+             * 3. 最近話した話題は避ける（繰り返し防止）
+             * 4. 直前のトピックには戻らない（循環防止）
+             * 
+             * 【循環防止】
+             * - グループが現在のトピックに「安定」するまで方向転換しない
+             * - 一度決めた目標は到達まで維持する
+             * - 直前のトピックへの戻りを禁止
+             * 
+             * @returns {p5.Vector} リーダーが向かいたい方向
+             */
+            calculateLeaderDirection() {
+                let leader = this.getCurrentLeader();
+                if (!leader) return createVector(0, 0);
+                
+                // 【安定期間チェック】
+                // グループが現在のトピックに十分滞在するまで次の方向を決めない
+                // これにより「すぐ戻る」循環を防ぐ
+                if (this.topicSettleFrames < this.settleThreshold) {
+                    // まだ安定していない → 現在の目標があればそれを維持
+                    if (this.targetTopic) {
+                        return this.getDirectionToTopic(this.targetTopic, leader);
+                    }
+                    // 目標がなければ動かない
+                    return createVector(0, 0);
+                }
+                
+                // 【目標トピックがまだ有効なら維持】
+                if (this.targetTopic && this.targetTopic.id !== this.currentTopicIndex) {
+                    return this.getDirectionToTopic(this.targetTopic, leader);
+                }
+                
+                let currentTopic = this.getCurrentTopic();
+                
+                // 隣接トピックを取得（自然な会話の流れ）
+                let adjacentTopics = this.getAdjacentTopics(currentTopic);
+                
+                // 隣接がない場合は全トピックを対象に
+                let candidates = adjacentTopics.length > 0 ? adjacentTopics : this.topics;
+                
+                // 【フィルタリング】
+                // - 現在のトピックを除外
+                // - 直前のトピックを除外（循環防止）
+                candidates = candidates.filter(t => 
+                    t.id !== currentTopic.id && 
+                    t.id !== this.previousTopicId
+                );
+                
+                if (candidates.length === 0) {
+                    // 候補がない場合は直前トピック以外の隣接も許可
+                    candidates = this.getAdjacentTopics(currentTopic).filter(t => 
+                        t.id !== currentTopic.id
+                    );
+                }
+                
+                if (candidates.length === 0) {
+                    this.targetTopic = null;
+                    return createVector(0, 0);
+                }
+                
+                // 各候補トピックをスコアリング
+                let bestTopic = null;
+                let bestScore = -1;
+                
+                for (let topic of candidates) {
+                    // リーダーの興味との一致度を計算
+                    let interestMatch = 0;
+                    for (let k = 0; k < CONFIG.numDimensions; k++) {
+                        interestMatch += leader.latentInterests[k] * topic.vector[k];
+                    }
+                    
+                    // 熱ペナルティ（最近訪問したトピックは強く避ける）
+                    let heatPenalty = topic.heat * 0.8;
+                    
+                    // 訪問回数ペナルティ（何度も訪問したトピックは避ける）
+                    let visitPenalty = Math.min(topic.visitCount * 0.1, 0.5);
+                    
+                    // 未訪問ボーナス
+                    let noveltyBonus = topic.visitCount === 0 ? 0.2 : 0;
+                    
+                    // 最終スコア
+                    let score = interestMatch * (1 - heatPenalty) * (1 - visitPenalty) + noveltyBonus;
+                    
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestTopic = topic;
+                    }
+                }
+                
+                // 目標トピックを記録（到達まで維持）
+                this.targetTopic = bestTopic;
+                
+                if (!bestTopic) return createVector(0, 0);
+                
+                return this.getDirectionToTopic(bestTopic, leader);
+            }
+            
+            /**
+             * 特定のトピックへの方向ベクトルを取得
+             */
+            getDirectionToTopic(topic, leader) {
+                let b = this.bounds;
+                let tileW = b.w / this.gridCols;
+                let tileH = b.h / this.gridRows;
+                
+                let targetX = b.x + (topic.gridX + 0.5) * tileW;
+                let targetY = b.y + (topic.gridY + 0.5) * tileH;
+                
+                let direction = createVector(targetX - leader.pos.x, targetY - leader.pos.y);
+                if (direction.mag() > 1) {
+                    direction.normalize();
+                }
+                
+                return direction;
+            }
+            
+            /**
+             * 現在のトピックを更新
+             * 重心の位置から対応するトピックを特定
+             */
+            updateCurrentTopic() {
+                let b = this.bounds;
+                let tileW = b.w / this.gridCols;
+                let tileH = b.h / this.gridRows;
+                
+                let col = constrain(Math.floor((this.centroid.x - b.x) / tileW), 0, this.gridCols - 1);
+                let row = constrain(Math.floor((this.centroid.y - b.y) / tileH), 0, this.gridRows - 1);
+                
+                let newTopic = this.topics.find(t => t.gridX === col && t.gridY === row);
+                
+                // トピックが変わった場合
+                if (newTopic && newTopic.id !== this.currentTopicIndex) {
+                    // 直前のトピックを記録（戻り防止用）
+                    this.previousTopicId = this.currentTopicIndex;
+                    
+                    this.currentTopicIndex = newTopic.id;
+                    newTopic.onEnter();
+                    totalTopicChanges++;
+                    this.updateMemberInterests();
+                    this.checkLeftOut();
+                    this.recordInterestSnapshot();
+                    
+                    // 安定カウンターをリセット
+                    this.topicSettleFrames = 0;
+                    this.targetTopic = null;  // 新トピックで目標をリセット
+                } else {
+                    // 同じトピックに滞在中 → 安定カウンターを増加
+                    this.topicSettleFrames++;
+                }
+            }
+            
+            /** 現在のトピックを取得 */
+            getCurrentTopic() { 
+                return this.topics[this.currentTopicIndex] || this.topics[0]; 
+            }
+            
+            /**
+             * 全メンバーの興味度を更新
+             * 現在のトピックに対する興味を再計算
+             */
+            updateMemberInterests() {
+                let topic = this.getCurrentTopic();
+                for (let m of this.members) { 
+                    m.calculateInterest(topic); 
+                    m.calculateVelocity(); 
+                }
+            }
+            
+            /**
+             * グループの平均速度を計算（式6）
+             * v_G = Σ(v_i) / I
+             */
+            getGroupVelocity() {
+                let sum = 0, count = 0;
+                for (let m of this.members) { 
+                    if (!m.leftOut) { 
+                        sum += m.currentVelocity; 
+                        count++; 
+                    } 
+                }
+                return count > 0 ? sum / count : 0;
+            }
+            
+            /**
+             * 離脱メンバーをチェック（式7）
+             * v_i_lb = v_G - v_i > v₀ なら離脱
+             */
+            checkLeftOut() {
+                let vG = this.getGroupVelocity();
+                
+                for (let m of this.members) {
+                    if (!m.leftOut) {
+                        // 離脱速度を計算
+                        let v_lb = vG - m.currentVelocity;
+                        
+                        // 閾値を超えたら離脱
+                        if (v_lb > leftOutThreshold) {
+                            m.leftOut = true;
+                            let entry = `[${CONFIG.groupNames[this.id]}] M${m.memberId+1}: v_lb=${v_lb.toFixed(2)}`;
+                            leftOutLog.unshift(entry);
+                            if (leftOutLog.length > 15) leftOutLog.pop();
+                        }
+                    }
+                }
+                
+                // アクティブメンバーが少なすぎる場合はグループを停止
+                if (this.getActiveCount() < CONFIG.minActiveMembers) {
+                    this.halted = true;
+                }
+            }
+            
+            /** アクティブメンバー数を取得 */
+            getActiveCount() { 
+                return this.members.filter(m => !m.leftOut).length; 
+            }
+            
+            /** 離脱メンバー数を取得 */
+            getLeftOutCount() { 
+                return this.members.filter(m => m.leftOut).length; 
+            }
+            
+            /**
+             * グループの更新処理（毎フレーム呼ばれる）
+             */
+            update() {
+                // 停止中は更新しない
+                if (this.halted) return;
+                
+                // トピックの熱を減衰
+                for (let t of this.topics) t.coolDown();
+
+                // 2. 健康診断（一定間隔で実行）[cite: 350-353, 438]
+                if (frameCount % leftOutCheckFrequency === 0) {
+                    this.calculateGroupHealth();
+                }
+                
+                // 3. 意思決定: 誰が議論をリードするかを決定 [cite: 354-361]
+                let steeringForce = this.calculateLeaderDirection();
+
+                // 定期的に離脱チェック
+                if (frameCount - this.lastLeftOutCheck >= leftOutCheckFrequency) {
+                    this.updateMemberInterests();
+                    this.checkLeftOut();
+                    this.lastLeftOutCheck = frameCount;
+                }
+                
+                // 【重要】リーダーの目標方向を更新（targetTopicを設定）
+                this.calculateLeaderDirection();
+                
+                // 各メンバーの更新（groupを渡してリーダー情報にアクセス）
+                for (let m of this.members) {
+                    m.flock(this.members, this.topics, this.bounds, this.momentum, this.gridCols, this.gridRows, this);
+
+                    // ファシリテーター自身の位置制御（リスクメンバーの近くに配置する設計判断を採用）[cite: 392-397]
+                    if (m.isFacilitator) {
+                        this.updateFacilitatorPosition(m);
+                    }
+
+                    m.update();
+                    
+                    // 境界内に収める
+                    if (!m.leftOut) {
+                        m.pos.x = constrain(m.pos.x, this.bounds.x + 5, this.bounds.x + this.bounds.w - 5);
+                        m.pos.y = constrain(m.pos.y, this.bounds.y + 5, this.bounds.y + this.bounds.h - 5);
+                    }
+                }
+                
+                this.calculateCentroid();
+                this.updateCurrentTopic();
+            }
+
+            updateFacilitatorPosition(f) {
+                let riskMember = this.members.find(m => m.riskLevel >= 2); // 危機状態のメンバーを探す
+                if (riskMember && this.facilitatorActive) {
+                    // ターゲットメンバーの少し後ろ（羊飼いポジション）へ移動 
+                    let targetPos = p5.Vector.sub(riskMember.pos, riskMember.vel.copy().setMag(20));
+                    let steer = p5.Vector.sub(targetPos, f.pos).limit(f.maxForce * 2);
+                    f.applyForce(steer);
+                } else {
+                    // 通常時は重心（ニュートラル位置）に配置 
+                    let steer = p5.Vector.sub(this.centroid, f.pos).limit(f.maxForce);
+                    f.applyForce(steer);
+                }
+            }
+
+            getFacilitatorSteering() {
+                let bestTopic = null;
+                let bestScore = -1;
+                let candidates = this.getAdjacentTopics(this.getCurrentTopic());
+
+                for (let topic of candidates) {
+                    let score = this.calculateBalancedScore(topic); // 公平性ベースのスコア [cite: 301-316]
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestTopic = topic;
+                    }
+                }
+                this.targetTopic = bestTopic;
+                return this.getDirectionToTopic(bestTopic, this.facilitator);
+            }
+            
+            /**
+             * グループの描画
+             */
+            draw() {
+                let b = this.bounds;
+                let tileW = b.w / this.gridCols;
+                let tileH = b.h / this.gridRows;
+                
+                // スケール係数
+                let scaleFactor = singleGroupMode ? 1.8 : 1.0;
+                
+                // トピックグリッドを描画
+                for (let topic of this.topics) {
+                    let x = b.x + topic.gridX * tileW;
+                    let y = b.y + topic.gridY * tileH;
+                    let isCurrent = topic.id === this.currentTopicIndex;
+                    
+                    let primaryColor = color(CONFIG.dimensionColors[topic.primaryDim]);
+                    
+                    if (isCurrent) {
+                        // 現在のトピックは明るく表示
+                        fill(red(primaryColor) * 0.35, green(primaryColor) * 0.35, blue(primaryColor) * 0.35);
+                        stroke(red(primaryColor), green(primaryColor), blue(primaryColor));
+                        strokeWeight(2 * scaleFactor);
+                    } else {
+                        let shade = topic.heat > 0.3 ? 0.18 : 0.12;
+                        fill(red(primaryColor) * shade, green(primaryColor) * shade, blue(primaryColor) * shade);
+                        stroke(red(primaryColor) * 0.3, green(primaryColor) * 0.3, blue(primaryColor) * 0.3);
+                        strokeWeight(1);
+                    }
+                    
+                    rect(x, y, tileW, tileH);
+                    
+                    // トピック名を表示
+                    fill(isCurrent ? 255 : 100);
+                    noStroke();
+                    textSize(5 * scaleFactor);
+                    textAlign(CENTER, CENTER);
+                    let nameLen = singleGroupMode ? 8 : 5;
+                    text(topic.getShortName().substr(0, nameLen), x + tileW/2, y + tileH/2);
+                }
+                
+                // グループの境界線
+                noFill(); 
+                stroke(this.halted ? color(255, 80, 80) : color(80, 90, 110)); 
+                strokeWeight(this.halted ? 3 : 2);
+                rect(b.x, b.y, b.w, b.h, 3);
+                
+                // 重心を表示
+                if (!this.halted) {
+                    stroke(255, 255, 255, 200); 
+                    strokeWeight(2 * scaleFactor); 
+                    noFill();
+                    ellipse(this.centroid.x, this.centroid.y, 8 * scaleFactor, 8 * scaleFactor);
+                }
+                
+                // 現在のリーダーを取得
+                let leader = this.getCurrentLeader();
+                
+                // リーダーの目標方向を表示（矢印）
+                if (leader && !this.halted && this.targetTopic) {
+                    let b = this.bounds;
+                    let tileW = b.w / this.gridCols;
+                    let tileH = b.h / this.gridRows;
+                    
+                    // 目標トピックの中心座標
+                    let targetX = b.x + (this.targetTopic.gridX + 0.5) * tileW;
+                    let targetY = b.y + (this.targetTopic.gridY + 0.5) * tileH;
+                    
+                    // リーダーから目標への方向
+                    let dirX = targetX - leader.pos.x;
+                    let dirY = targetY - leader.pos.y;
+                    let dist = Math.sqrt(dirX * dirX + dirY * dirY);
+                    
+                    if (dist > 10) {
+                        // 正規化
+                        dirX /= dist;
+                        dirY /= dist;
+                        
+                        let arrowLength = Math.min(30 * scaleFactor, dist * 0.6);
+                        let arrowX = leader.pos.x + dirX * arrowLength;
+                        let arrowY = leader.pos.y + dirY * arrowLength;
+                        
+                        // 点線で方向を表示
+                        stroke(255, 215, 0, 180);  // 金色
+                        strokeWeight(2 * scaleFactor);
+                        drawingContext.setLineDash([4, 4]);
+                        line(leader.pos.x, leader.pos.y, arrowX, arrowY);
+                        drawingContext.setLineDash([]);
+                        
+                        // 矢印の先端
+                        fill(255, 215, 0, 220);
+                        noStroke();
+                        push();
+                        translate(arrowX, arrowY);
+                        rotate(atan2(dirY, dirX));
+                        triangle(0, 0, -8 * scaleFactor, -4 * scaleFactor, -8 * scaleFactor, 4 * scaleFactor);
+                        pop();
+                        
+                        // 目標トピックをハイライト
+                        noFill();
+                        stroke(255, 215, 0, 100);
+                        strokeWeight(2);
+                        rect(b.x + this.targetTopic.gridX * tileW, 
+                             b.y + this.targetTopic.gridY * tileH, 
+                             tileW, tileH, 2);
+                    }
+                }
+                
+                // メンバーを描画（アクティブ→離脱の順で描画）
+                for (let m of this.members) {
+                    if (!m.leftOut) {
+                        m.draw(this.color, m === leader);
+                    }
+                }
+                for (let m of this.members) {
+                    if (m.leftOut) {
+                        m.draw(this.color, false);
+                    }
+                }
+                
+                // グループラベル
+                fill(255); 
+                noStroke(); 
+                textSize(7 * scaleFactor); 
+                textAlign(LEFT, TOP);
+                text(CONFIG.groupNames[this.id], b.x + 3, b.y + 2);
+                
+                // 離脱者数を表示
+                let frozen = this.getLeftOutCount();
+                if (frozen > 0) {
+                    fill(255, 100, 100);
+                    text(`❄️${frozen}`, b.x + 16 * scaleFactor, b.y + 2);
+                }
+                
+                // 停止オーバーレイ
+                if (this.halted) {
+                    fill(60, 20, 20, 200);
+                    rect(b.x, b.y, b.w, b.h);
+                    fill(255, 100, 100);
+                    textSize(9 * scaleFactor);
+                    textAlign(CENTER, CENTER);
+                    text('⛔ HALTED', b.x + b.w/2, b.y + b.h/2 - 6 * scaleFactor);
+                    textSize(6 * scaleFactor);
+                    fill(200);
+                    text(`< ${CONFIG.minActiveMembers} active`, b.x + b.w/2, b.y + b.h/2 + 5 * scaleFactor);
+                }
+            }
+        }
+
+        // ============================================
+        // グラフ描画関数
+        // HTML Canvas APIを使用（高DPIディスプレイ対応）
+        // 論文の図5に相当する積み上げ面グラフを描画
+        // ============================================
+        
+        /**
+         * グラフキャンバスの初期設定
+         * 高DPIディスプレイ対応のためのスケーリング
+         */
+        function setupGraphCanvas() {
+            const canvas = document.getElementById('graph-canvas');
+            const dpr = window.devicePixelRatio || 1;  // デバイスピクセル比
+            const displayWidth = 640;
+            const displayHeight = 160;
+            
+            // 実際のピクセル数を増やす（Retinaディスプレイ対応）
+            canvas.width = displayWidth * dpr;
+            canvas.height = displayHeight * dpr;
+            
+            // コンテキストをスケール
+            const ctx = canvas.getContext('2d');
+            ctx.scale(dpr, dpr);
+            
+            return { canvas, ctx, W: displayWidth, H: displayHeight };
+        }
+        
+        let graphSetup = null;
+        
+        /**
+         * 興味変動グラフの描画
+         * 積み上げ面グラフでメンバーの興味変動を可視化
+         */
+        function drawInterestGraph() {
+            // 初回のみセットアップ
+            if (!graphSetup) {
+                graphSetup = setupGraphCanvas();
+            }
+            
+            const { ctx, W, H } = graphSetup;
+            
+            // 背景をクリア
+            ctx.fillStyle = '#0f0f1a';
+            ctx.fillRect(0, 0, W, H);
+            
+            let group = groups[selectedGroupId];
+            if (!group) return;
+            
+            let history = group.interestHistory;
+            let topicLabels = group.topicHistory;
+            
+            // データが少ない場合はメッセージを表示
+            if (history.length < 2) {
+                ctx.fillStyle = '#666';
+                ctx.font = '12px Segoe UI';
+                ctx.textAlign = 'center';
+                ctx.fillText('📈 Waiting for topic transitions...', W/2, H/2);
+                return;
+            }
+            
+            // グラフのマージン設定
+            const margin = { left: 45, right: 15, top: 20, bottom: 25 };
+            const plotW = W - margin.left - margin.right;
+            const plotH = H - margin.top - margin.bottom;
+            
+            const numPoints = history.length;
+            const maxY = CONFIG.groupSize * CONFIG.maxInterest;  // Y軸の最大値
+            
+            // タイトル描画
+            ctx.fillStyle = CONFIG.groupColors[selectedGroupId];
+            ctx.font = 'bold 11px Segoe UI';
+            ctx.textAlign = 'left';
+            let titlePrefix = singleGroupMode ? 'Single Group' : CONFIG.groupNames[selectedGroupId];
+            ctx.fillText(`${titlePrefix} - Interest Fluctuation`, margin.left, 14);
+            
+            if (group.halted) {
+                ctx.fillStyle = '#ff5555';
+                ctx.fillText(' [HALTED]', margin.left + 140, 14);
+            }
+            
+            // 軸を描画
+            ctx.strokeStyle = '#444';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(margin.left, margin.top);
+            ctx.lineTo(margin.left, margin.top + plotH);
+            ctx.lineTo(margin.left + plotW, margin.top + plotH);
+            ctx.stroke();
+            
+            // Y軸ラベルとグリッド線
+            ctx.fillStyle = '#888';
+            ctx.font = '9px Segoe UI';
+            ctx.textAlign = 'right';
+            for (let i = 0; i <= 4; i++) {
+                let y = margin.top + plotH - (i / 4) * plotH;
+                let val = (i / 4) * maxY;
+                ctx.fillText(val.toFixed(0), margin.left - 5, y + 3);
+                
+                ctx.strokeStyle = '#333';
+                ctx.beginPath();
+                ctx.moveTo(margin.left, y);
+                ctx.lineTo(margin.left + plotW, y);
+                ctx.stroke();
+            }
+            
+            // X軸ラベル（トピック番号）
+            ctx.textAlign = 'center';
+            let step = Math.max(1, Math.floor(numPoints / 10));
+            for (let i = 0; i < numPoints; i += step) {
+                let x = margin.left + (i / (numPoints - 1)) * plotW;
+                ctx.fillStyle = '#888';
+                ctx.fillText('t' + topicLabels[i], x, margin.top + plotH + 12);
+            }
+            
+            // 積み上げ面グラフを描画（下から上へ）
+            for (let m = CONFIG.groupSize - 1; m >= 0; m--) {
+                ctx.beginPath();
+                
+                // 下端の線を描画
+                for (let i = 0; i < numPoints; i++) {
+                    let x = margin.left + (i / (numPoints - 1)) * plotW;
+                    let cumulative = 0;
+                    // このメンバーより下のメンバーの興味を累積
+                    for (let j = m + 1; j < CONFIG.groupSize; j++) {
+                        if (!history[i][j].leftOut) {
+                            cumulative += history[i][j].interest;
+                        }
+                    }
+                    let y = margin.top + plotH - (cumulative / maxY) * plotH;
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                
+                // 上端の線を描画（逆順）
+                for (let i = numPoints - 1; i >= 0; i--) {
+                    let x = margin.left + (i / (numPoints - 1)) * plotW;
+                    let cumulative = 0;
+                    // このメンバーを含む累積
+                    for (let j = m; j < CONFIG.groupSize; j++) {
+                        if (!history[i][j].leftOut) {
+                            cumulative += history[i][j].interest;
+                        }
+                    }
+                    let y = margin.top + plotH - (cumulative / maxY) * plotH;
+                    ctx.lineTo(x, y);
+                }
+                
+                ctx.closePath();
+                
+                // 半透明の塗りつぶし
+                let c = CONFIG.memberColors[m];
+                ctx.fillStyle = c + '99';  // アルファ値を追加
+                ctx.fill();
+                
+                // 境界線
+                ctx.strokeStyle = c;
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+            
+            // Y軸タイトル（縦書き）
+            ctx.save();
+            ctx.translate(12, margin.top + plotH / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillStyle = '#aaa';
+            ctx.font = '9px Segoe UI';
+            ctx.textAlign = 'center';
+            ctx.fillText('Cumulative Interest', 0, 0);
+            ctx.restore();
+            
+            // X軸タイトル
+            ctx.fillStyle = '#aaa';
+            ctx.font = '9px Segoe UI';
+            ctx.textAlign = 'center';
+            ctx.fillText('Topic Transitions', margin.left + plotW / 2, H - 5);
+        }
+
+        // ============================================
+        // p5.js セットアップ関数
+        // 初期化処理
+        // ============================================
+        function setup() {
+            // メインキャンバスを作成
+            let canvas = createCanvas(640, 320);
+            canvas.parent('canvas-container');
+            canvas.id('simulation-canvas');
+            
+            initSimulation();
+            setupEventListeners();
+            updateLegend();
+        }
+        
+        /**
+         * シミュレーションの初期化
+         * グループとメンバーを生成
+         */
+        function initSimulation() {
+            groups = [];
+            totalTopicChanges = 0;
+            leftOutLog = [];
+            selectedGroupId = 0;
+            
+            let padding = 4, gap = 4;
+            
+            if (singleGroupMode) {
+                // シングルグループモード: 全画面を1グループで使用
+                let gw = width - padding * 2;
+                let gh = height - padding * 2;
+                groups.push(new Group(0, { x: padding, y: padding, w: gw, h: gh }));
+                
+                // G1以外のボタンを非表示
+                document.querySelectorAll('.group-btn').forEach((btn, i) => {
+                    btn.style.display = i === 0 ? 'block' : 'none';
+                });
+                document.querySelector('.group-btn.g1').classList.add('active');
+            } else {
+                // 4グループモード: 2x2グリッドで配置
+                let gw = (width - padding * 2 - gap) / 2;
+                let gh = (height - padding * 2 - gap) / 2;
+                
+                groups.push(new Group(0, { x: padding, y: padding, w: gw, h: gh }));
+                groups.push(new Group(1, { x: padding + gw + gap, y: padding, w: gw, h: gh }));
+                groups.push(new Group(2, { x: padding, y: padding + gh + gap, w: gw, h: gh }));
+                groups.push(new Group(3, { x: padding + gw + gap, y: padding + gh + gap, w: gw, h: gh }));
+                
+                // 全ボタンを表示
+                document.querySelectorAll('.group-btn').forEach(btn => {
+                    btn.style.display = 'block';
+                });
+            }
+            
+            updateModeButton();
+            updateUI();
+        }
+        
+        /** モード切替ボタンのテキストを更新 */
+        function updateModeButton() {
+            const btn = document.getElementById('mode-btn');
+            if (singleGroupMode) {
+                btn.textContent = '🔄 Switch to 4 Groups';
+            } else {
+                btn.textContent = '🔄 Switch to 1 Group';
+            }
+        }
+        
+        /** モード切替処理 */
+        function toggleMode() {
+            singleGroupMode = !singleGroupMode;
+            initSimulation();
+        }
+        
+        /** グラフ凡例を更新 */
+        function updateLegend() {
+            let legendHtml = '';
+            for (let i = 0; i < CONFIG.groupSize; i++) {
+                legendHtml += `<span class="legend-item"><span class="legend-color" style="background:${CONFIG.memberColors[i]}"></span>M${i+1}</span>`;
+            }
+            document.getElementById('graph-legend').innerHTML = legendHtml;
+        }
+        
+        /**
+         * イベントリスナーの設定
+         * ボタンとスライダーの動作を定義
+         */
+        function setupEventListeners() {
+            // グループ選択ボタン
+            document.querySelectorAll('.group-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    let idx = parseInt(btn.dataset.group);
+                    selectGroup(idx);
+                });
+            });
+            
+            // スライダー設定
+            const sliders = [
+                ['threshold', v => { leftOutThreshold = v; document.getElementById('v0-display').textContent = v.toFixed(2); }],
+                ['check-freq', v => leftOutCheckFrequency = v],
+                ['interest-sensitivity', v => interestSensitivity = v],
+            ];
+            
+            sliders.forEach(([id, fn]) => {
+                let el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('input', (e) => {
+                        let v = parseFloat(e.target.value);
+                        fn(v);
+                        let valEl = document.getElementById(id + '-val');
+                        if (valEl) valEl.textContent = v.toFixed(id === 'check-freq' ? 0 : 1);
+                    });
+                }
+            });
+            
+            // コントロールボタン
+            document.getElementById('mode-btn').addEventListener('click', toggleMode);
+            document.getElementById('restart-btn').addEventListener('click', initSimulation);
+            document.getElementById('pause-btn').addEventListener('click', () => {
+                paused = !paused;
+                document.getElementById('pause-btn').textContent = paused ? '▶️ Resume' : '⏸️ Pause';
+            });
+            document.getElementById('force-check-btn').addEventListener('click', () => {
+                for (let g of groups) { 
+                    g.updateMemberInterests(); 
+                    g.checkLeftOut(); 
+                }
+                updateUI();
+            });
+        }
+
+        // ============================================
+        // メイン描画ループ
+        // p5.jsにより毎フレーム呼ばれる
+        // ============================================
+        function draw() {
+            background(15, 15, 22);
+            
+            // 一時停止中でなければ更新
+            if (!paused) {
+                for (let g of groups) g.update();
+            }
+            
+            // 全グループを描画
+            for (let g of groups) g.draw();
+            
+            // グラフを描画
+            drawInterestGraph();
+            
+            // 8フレームごとにUIを更新
+            if (frameCount % 8 === 0) updateUI();
+        }
+
+        /**
+         * UI要素を更新
+         * メンバーリスト、統計情報などを最新状態に
+         */
+        function updateUI() {
+            let group = groups[selectedGroupId];
+            let topic = group.getCurrentTopic();
+            let vG = group.getGroupVelocity();
+            
+            // トピック情報を更新
+            document.getElementById('topic-name').textContent = topic.name;
+            document.getElementById('topic-category').textContent = `Primary: ${CONFIG.dimensionNames[topic.primaryDim]}`;
+            document.getElementById('vg-display').textContent = vG.toFixed(2);
+            
+            // トピックの次元バーを更新
+            let dimHtml = '';
+            for (let k = 0; k < CONFIG.numDimensions; k++) {
+                let pct = (topic.vector[k] * 100).toFixed(0);
+                dimHtml += `
+                    <div class="dimension-bar">
+                        <span class="label">${CONFIG.dimensionNames[k]}</span>
+                        <div class="bar-track">
+                            <div class="bar-fill" style="width:${pct}%; background:${CONFIG.dimensionColors[k]}"></div>
+                        </div>
+                        <span class="value">${pct}%</span>
+                    </div>
+                `;
+            }
+            document.getElementById('topic-dimensions').innerHTML = dimHtml;
+            
+            // メンバーリストを更新（速度順にソート）
+            let memberHtml = '';
+            let sorted = [...group.members].sort((a, b) => b.currentVelocity - a.currentVelocity);
+            
+            // 現在のリーダーを取得
+            let leader = group.getCurrentLeader();
+            
+            for (let m of sorted) {
+                let intPct = (m.getInterestNormalized() * 100).toFixed(0);
+                let v_lb = vG - m.currentVelocity;
+                let wouldFreeze = v_lb > leftOutThreshold && !m.leftOut;
+                let isLeader = (m === leader);
+                
+                // 状態に応じたCSSクラスを設定
+                let cls = m.leftOut ? 'left-out' : (parseFloat(intPct) > 50 ? 'high-interest' : (parseFloat(intPct) < 30 ? 'low-interest' : ''));
+                let status = m.leftOut ? '❄️' : (isLeader ? '★' : (wouldFreeze ? '⚠️' : ''));
+                let statusColor = isLeader ? 'color:#ffd700;' : '';
+                
+                memberHtml += `
+                    <div class="member-item ${cls}">
+                        <span style="font-weight:bold; color:${m.color}">M${m.memberId+1}</span>
+                        <span style="font-size:0.45rem; color:#888">${CONFIG.dimensionNames[m.primaryInterest].substr(0,3)}</span>
+                        <div class="interest-bar">
+                            <div class="interest-fill" style="width:${intPct}%; background:${m.color}"></div>
+                        </div>
+                        <span style="font-size:0.43rem; font-family:monospace">${intPct}%</span>
+                        <span style="${statusColor}">${status}</span>
+                    </div>
+                `;
+            }
+            document.getElementById('member-list').innerHTML = memberHtml;
+            
+            // 離脱ログを更新
+            document.getElementById('leftout-log').innerHTML = leftOutLog.length > 0 ? leftOutLog.join('<br>') : 'Waiting...';
+            
+            // 統計情報を更新
+            let totalActive = 0, totalLeftOut = 0, haltedCount = 0;
+            for (let g of groups) { 
+                totalActive += g.getActiveCount(); 
+                totalLeftOut += g.getLeftOutCount();
+                if (g.halted) haltedCount++;
+            }
+            document.getElementById('total-active').textContent = totalActive;
+            document.getElementById('total-leftout').textContent = totalLeftOut;
+            document.getElementById('topic-changes').textContent = totalTopicChanges;
+            document.getElementById('halted-count').textContent = haltedCount;
+            
+            // リーダー情報を表示
+            let leaderText = leader ? `M${leader.memberId + 1}` : '-';
+            document.getElementById('leader-count').textContent = leaderText;
+            
+            // ヘッダーのモード表示を更新
+            const modeText = singleGroupMode ? '1 Group Mode' : '4 Groups Mode';
+            let leaderName = leader ? `M${leader.memberId + 1}` : 'none';
+            document.querySelector('.header p').textContent = `${modeText} • ★ Leader: ${leaderName} steers toward adjacent topics matching their interest`;
+            
+            // リーダー情報パネルを更新
+            updateLeaderInfoPanel();
+        }
+        
+        /**
+         * リーダー情報パネルを更新
+         * 各グループのリーダーと目標トピックを表示
+         */
+        function updateLeaderInfoPanel() {
+            let panelHtml = '';
+            
+            for (let i = 0; i < groups.length; i++) {
+                let g = groups[i];
+                let leader = g.getCurrentLeader();
+                let currentTopic = g.getCurrentTopic();
+                let targetTopic = g.targetTopic;
+                let isSelected = (i === selectedGroupId);
+                let isSettled = g.topicSettleFrames >= g.settleThreshold;
+                
+                let leaderName = leader ? `M${leader.memberId + 1}` : '-';
+                let leaderColor = leader ? leader.color : '#888';
+                let currentName = currentTopic ? currentTopic.getShortName() : '-';
+                let targetName = targetTopic ? targetTopic.getShortName() : (isSettled ? 'deciding...' : 'settling...');
+                
+                let settleProgress = Math.min(100, (g.topicSettleFrames / g.settleThreshold) * 100).toFixed(0);
+                
+                panelHtml += `
+                    <div class="leader-card ${isSelected ? 'active' : ''}" onclick="selectGroup(${i})">
+                        <div class="group-label" style="color:${CONFIG.groupColors[i]}">${CONFIG.groupNames[i]} ${g.halted ? '⛔' : ''}</div>
+                        <div>
+                            <span class="leader-name" style="color:${leaderColor}">★ ${leaderName}</span>
+                        </div>
+                        <div style="margin-top:2px;">
+                            <span style="color:#aaa">${currentName}</span>
+                            <span class="arrow">→</span>
+                            <span class="${targetTopic ? 'target-topic' : 'settled'}">${targetName}</span>
+                        </div>
+                        <div style="margin-top:3px; height:3px; background:#2a3a5e; border-radius:2px; overflow:hidden;">
+                            <div style="height:100%; width:${settleProgress}%; background:${isSettled ? '#4ecdc4' : '#ffd700'}; transition:width 0.1s;"></div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            document.getElementById('leader-info-panel').innerHTML = panelHtml;
+        }
+        
+        /**
+         * グループを選択（パネルクリック用）
+         */
+        function selectGroup(idx) {
+            selectedGroupId = idx;
+            document.querySelectorAll('.group-btn').forEach((btn, i) => {
+                btn.classList.toggle('active', i === idx);
+            });
+            updateUI();
+        }
+    </script>
+</body>
+</html>

@@ -29,14 +29,28 @@ export const CONFIG = {
 
 // UIスライダー等でリアルタイムに変更されるパラメータ
 export const PARAMS = {
-    cohesionWeight: 2,
-    alignmentWeight: 1,
-    separationWeight: 2,
+    // 1. 早期検出: 多段階警告システム [cite: 24-34]
+    thresholdSafe: 0.2,     // 安全閾値（これ以上はエンゲージ中/緑） [cite: 26]
+    thresholdCritical: 0.5, // 危険閾値（これ以下は危機状態/橙。介入トリガー） [cite: 29]
+    thresholdLeftout: 1.0,  // 離脱閾値（これ以下は離脱済み/赤。凍結判定） [cite: 32, 442]
+
+    cohesionBase: 0.1,
+    alignmentBase: 1.5,
+    separationBase: 1.0,
     interestPullWeight: 0.5,
-    
-    // 離脱予兆判定
-    recoveryThreshold: 0.07,    // v0
-    leftOutThreshold: 1.0,     // v1
+    interestSensitivity: 1.0,
+
+    // 3. リーダーシップと循環防止 [cite: 341-375]
+    leaderSteeringFactor: 3.5, // リーダーの舵取り強化倍率 [cite: 351]
+    settlingPeriod: 60,        // 新トピック到達後の安定期間（フレーム） [cite: 367]
+
+    // 4. ファシリテーターの介入ロジック [cite: 83-112]
+    lambda: 0.5,               // 最小興味最大化と分散最小化のバランス係数（λ） [cite: 105, 112]
+    steeringIntensity: 0.7,    // 介入強度（介入時の同調度 0.0-1.0）
+    stabilityRequired: 60,     // 介入解除に必要な連続安定フレーム数（ヒステリシス） [cite: 174]
+
+    // 5. 検出シグナルの窓幅 [cite: 36]
+    trendWindowSize: 30,       // 速度トレンド計算用のフレーム数 [cite: 36]
 
     // 近傍話題の類似度閾値
     neighborTopicsThreshold: 0.5,

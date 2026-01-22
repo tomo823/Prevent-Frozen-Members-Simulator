@@ -186,7 +186,7 @@ function updateUIDynamic() {
     const topic = group.getCurrentTopic();
     document.getElementById('topic-name').textContent = topic.name;
     document.getElementById('vg-display').textContent = group.getGroupVelocity().toFixed(2);
-    document.getElementById('v0-display').textContent = PARAMS.leftOutThreshold.toFixed(2);
+    document.getElementById('v0-display').textContent = PARAMS.thresholdLeftout.toFixed(2);
     
     // メンバーリストの表示
     updateMemberList(group, topic);
