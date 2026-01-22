@@ -1172,11 +1172,11 @@
                 this.currentTopicIndex = 0;
                 this.lastLeftOutCheck = 0;
                 this.halted = false;  // グループ停止フラグ
+
+                // --- ファシリテーター管理プロパティの初期化 ---
                 this.facilitatorActive = false; // 介入モードフラグ [cite: 280, 439]
                 this.stableFrames = 0; // ヒステリシス用カウンタ [cite: 379]
-
-                this.facilitator = new Member(id, 999, true);
-                this.members.push(this.facilitator);
+                this.facilitator = null; // 後で ID:0 を代入
 
                 // 介入用閾値設定 [cite: 232-238]
                 this.thresholds = {
@@ -1219,10 +1219,18 @@
                 let centerY = bounds.y + bounds.h / 2;
                 
                 for (let i = 0; i < CONFIG.groupSize; i++) {
-                    let member = new Member(id, i);
+                    // インデックス0のメンバーをファシリテーターとして設定 [cite: 433-435]
+                    let isFac = (i === 0); 
+                    let member = new Member(id, i, isFac);
+                    
+                    // 初期位置を中央付近に設定（左上問題を解消）
                     member.pos = createVector(centerX + random(-25, 25), centerY + random(-25, 25));
                     member.vel = p5.Vector.random2D().mult(0.2);
+                    
                     this.members.push(member);
+                    
+                    // クラス内でファシリテーターへの参照を保持しておく
+                    if (isFac) this.facilitator = member;
                 }
                 
                 this.centroid = createVector(centerX, centerY);
