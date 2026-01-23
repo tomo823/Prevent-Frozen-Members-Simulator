@@ -754,9 +754,15 @@
                 for (let other of members) {
                     if (other !== this) {
                         let d = p5.Vector.dist(this.pos, other.pos);
-                        if (d < radius && d > 0) {
-                            let diff = p5.Vector.sub(this.pos, other.pos);
-                            diff.div(d);
+                        // 修正：d > 0 の制限を外し、重なった場合はランダムな方向に弾く
+                        if (d < radius) {
+                            let diff;
+                            if (d === 0) {
+                                diff = p5.Vector.random2D(); // 完全に重なったらランダムに逃げる
+                            } else {
+                                diff = p5.Vector.sub(this.pos, other.pos);
+                                diff.div(d);
+                            }
                             steering.add(diff);
                         }
                     }
@@ -801,7 +807,7 @@
                 let adjustedInterest = Math.min(1, Math.max(0, interestNorm * interestSensitivity));
                 
                 // 現在のリーダーを取得
-                let leader = group.getCurrentLeader();
+                let leader = group.currentLeader;
                 let isLeader = (leader === this);
                 
                 // ============================================
@@ -929,87 +935,6 @@
                 this.pos.add(this.vel);
                 this.acc.mult(0);  // 加速度をリセット
             }
-            
-            /**
-             * メンバーの描画
-             * - リーダー: 星印付き、大きめの三角形
-             * - フォロワー: 通常の三角形（興味レベルで大きさ変化）
-             * - 離脱: パルスする円と❄️アイコン
-             * 
-             * @param {boolean} isLeader - リーダーかどうか
-             */
-            // draw(groupColor, isLeader = false) {
-            //     push();
-            //     translate(this.pos.x, this.pos.y);
-                
-            //     // スケール係数（シングルグループモードは大きく表示）
-            //     let scaleFactor = singleGroupMode ? 1.5 : 1.0;
-                
-            //     if (this.leftOut) {
-            //         // 離脱メンバーの描画（パルスアニメーション）
-            //         let pulse = sin(frameCount * 0.12) * 3 + 14 * scaleFactor;
-            //         noStroke(); 
-            //         fill(255, 60, 60, 40);
-            //         ellipse(0, 0, pulse + 8 * scaleFactor, pulse + 8 * scaleFactor);
-            //         fill(70, 70, 80); 
-            //         stroke(255, 80, 80); 
-            //         strokeWeight(2);
-            //         ellipse(0, 0, pulse, pulse);
-            //         stroke(255, 120, 120); 
-            //         strokeWeight(2);
-            //         let x = pulse * 0.22;
-            //         line(-x, -x, x, x); 
-            //         line(-x, x, x, -x);
-            //         fill(255); 
-            //         noStroke(); 
-            //         textSize(8 * scaleFactor); 
-            //         textAlign(CENTER, CENTER);
-            //         text('❄️', 0, -pulse/2 - 5 * scaleFactor);
-            //     } else {
-            //         // アクティブメンバーの描画
-            //         let interestNorm = this.getInterestNormalized();
-                    
-            //         // リーダーは大きく表示
-            //         let leaderBonus = isLeader ? 1.4 : 1.0;
-            //         let size = map(interestNorm, 0, 1, 4, 10) * scaleFactor * leaderBonus;
-            //         let brightness = map(interestNorm, 0, 1, 0.35, 1.0);
-                    
-            //         // 移動方向に回転
-            //         if (this.vel.mag() > 0.05) rotate(this.vel.heading());
-                    
-            //         let c = color(this.color);
-                    
-            //         // リーダーには光彩効果
-            //         if (isLeader) {
-            //             noStroke();
-            //             fill(red(c), green(c), blue(c), 50);
-            //             ellipse(0, 0, size * 3, size * 3);
-            //         }
-                    
-            //         fill(red(c) * brightness + 30, green(c) * brightness + 30, blue(c) * brightness + 30, 220);
-            //         stroke(red(c), green(c), blue(c));
-            //         strokeWeight(isLeader ? 2.5 * scaleFactor : 1.5 * scaleFactor);
-                    
-            //         // 三角形を描画
-            //         beginShape();
-            //         vertex(size, 0);
-            //         vertex(-size * 0.5, size * 0.5);
-            //         vertex(-size * 0.5, -size * 0.5);
-            //         endShape(CLOSE);
-                    
-            //         // リーダーには星マーク
-            //         if (isLeader) {
-            //             fill(255, 255, 100);
-            //             noStroke();
-            //             textSize(6 * scaleFactor);
-            //             textAlign(CENTER, CENTER);
-            //             // 回転をリセットして星を表示
-            //             rotate(-this.vel.heading());
-            //             text('★', 0, -size - 4 * scaleFactor);
-            //         }
-            //     }
-            //     pop();
-            // }
 
             draw(groupColor, isLeader) {
                 push();
@@ -1161,6 +1086,7 @@
                 this.previousTopicId = -1;          // 直前のトピックID（戻り防止）
                 this.topicSettleFrames = 0;         // 現在のトピックに滞在したフレーム数
                 this.settleThreshold = 60;          // 安定とみなすフレーム数
+                this.currentLeader = null; // 現在のリーダーを保持するプロパティ
                 this.targetTopic = null;            // リーダーの目標トピック
                 
                 // グリッドサイズ（トピック配置用）
@@ -1214,34 +1140,6 @@
                 this.recordInterestSnapshot();
             }
 
-            // グループ健康度の診断と介入判定 [cite: 350-356, 438]
-            calculateGroupHealth() {
-                let vG = this.getGroupVelocity();
-                let atRiskCount = 0;
-
-                for (let m of this.members) {
-                    m.updateRiskLevel(vG, this.thresholds);
-                    if (m.riskLevel == 2 && !m.isFacilitator) atRiskCount++;
-                }
-
-                // 介入トリガーの判定 [cite: 278, 369]
-                if (!this.facilitatorActive && atRiskCount >= 1) {
-                    this.facilitatorActive = true; // 活性状態へ [cite: 280]
-                    this.stableFrames = 0;
-                    console.log(`Group ${this.id} facilitator activated.`);
-                } else if (this.facilitatorActive) {
-                    // ヒステリシス（振動防止）: 全員が安全な状態が一定期間続けば解除 [cite: 376-384]
-                    if (atRiskCount === 0) {
-                        this.stableFrames++;
-                        if (this.stableFrames > 60) {
-                            this.facilitatorActive = false; // 休眠状態へ [cite: 288]
-                        }
-                    } else {
-                        this.stableFrames = 0;
-                    }
-                }
-            }
-
             // ファシリテーターによる「グループ福祉型」スコアリング [cite: 295-316, 440]
             calculateBalancedScore(candidateTopic) {
                 let activeMembers = this.members.filter(m => !m.leftOut && !m.isFacilitator);
@@ -1264,16 +1162,6 @@
                 return balanceScore * (1 - candidateTopic.heat * 0.5);
             }
 
-            // リーダーの意思決定ロジックの拡張 [cite: 345-361]
-            calculateLeaderDirection() {
-                if (this.facilitatorActive) {
-                    // 介入モード: ファシリテーターがバランストピックを選択 [cite: 282, 361]
-                    return this.getFacilitatorSteering();
-                } else {
-                    // 通常モード: 自然なリーダーによる舵取り [cite: 291, 346]
-                    return this.getNaturalLeaderSteering();
-                }
-            }
             
             /**
              * 興味のスナップショットを記録（グラフ用）
@@ -1299,7 +1187,7 @@
              */
             calculateCentroid() {
                 let sumX = 0, sumY = 0, totalWeight = 0;
-                let leader = this.getCurrentLeader();
+                let leader = this.currentLeader;
                 
                 for (let m of this.members) {
                     if (!m.leftOut) {
@@ -1329,20 +1217,20 @@
              * 実際の議論でも、そのトピックに詳しい人・興味がある人が
              * 自然と会話をリードする傾向がある
              */
-            getCurrentLeader() {
-                // 介入モードなら、ファシリテーターを強制的に「物理的リーダー」にする
-                if (this.facilitatorActive && this.facilitator) {
-                    return this.facilitator;
-                }
+            // getCurrentLeader() {
+            //     // 介入モードなら、ファシリテーターを強制的に「物理的リーダー」にする
+            //     if (this.facilitatorActive && this.facilitator) {
+            //         return this.facilitator;
+            //     }
 
-                let activeMembers = this.members.filter(m => !m.leftOut);
-                if (activeMembers.length === 0) return null;
+            //     let activeMembers = this.members.filter(m => !m.leftOut);
+            //     if (activeMembers.length === 0) return null;
                 
-                // 現在のトピックへの興味が最も高いメンバーをリーダーとする
-                return activeMembers.reduce((best, m) => 
-                    m.currentInterest > best.currentInterest ? m : best
-                );
-            }
+            //     // 現在のトピックへの興味が最も高いメンバーをリーダーとする
+            //     return activeMembers.reduce((best, m) => 
+            //         m.currentInterest > best.currentInterest ? m : best
+            //     );
+            // }
             
             /**
              * 隣接トピックを取得
@@ -1362,109 +1250,6 @@
                     }
                 }
                 return adjacent;
-            }
-            
-            /**
-             * リーダーが議論を導く方向を計算
-             * 
-             * 【現実的な議論の流れ】
-             * リーダーは以下を考慮して次の話題を選ぶ：
-             * 1. 現在のトピックから自然につながる（隣接トピック優先）
-             * 2. 自分の興味・専門に合う方向
-             * 3. 最近話した話題は避ける（繰り返し防止）
-             * 4. 直前のトピックには戻らない（循環防止）
-             * 
-             * 【循環防止】
-             * - グループが現在のトピックに「安定」するまで方向転換しない
-             * - 一度決めた目標は到達まで維持する
-             * - 直前のトピックへの戻りを禁止
-             * 
-             * @returns {p5.Vector} リーダーが向かいたい方向
-             */
-            calculateLeaderDirection() {
-                let leader = this.getCurrentLeader();
-                if (!leader) return createVector(0, 0);
-                
-                // 【安定期間チェック】
-                // グループが現在のトピックに十分滞在するまで次の方向を決めない
-                // これにより「すぐ戻る」循環を防ぐ
-                if (this.topicSettleFrames < this.settleThreshold) {
-                    // まだ安定していない → 現在の目標があればそれを維持
-                    if (this.targetTopic) {
-                        return this.getDirectionToTopic(this.targetTopic, leader);
-                    }
-                    // 目標がなければ動かない
-                    return createVector(0, 0);
-                }
-                
-                // 【目標トピックがまだ有効なら維持】
-                if (this.targetTopic && this.targetTopic.id !== this.currentTopicIndex) {
-                    return this.getDirectionToTopic(this.targetTopic, leader);
-                }
-                
-                let currentTopic = this.getCurrentTopic();
-                
-                // 隣接トピックを取得（自然な会話の流れ）
-                let adjacentTopics = this.getAdjacentTopics(currentTopic);
-                
-                // 隣接がない場合は全トピックを対象に
-                let candidates = adjacentTopics.length > 0 ? adjacentTopics : this.topics;
-                
-                // 【フィルタリング】
-                // - 現在のトピックを除外
-                // - 直前のトピックを除外（循環防止）
-                candidates = candidates.filter(t => 
-                    t.id !== currentTopic.id && 
-                    t.id !== this.previousTopicId
-                );
-                
-                if (candidates.length === 0) {
-                    // 候補がない場合は直前トピック以外の隣接も許可
-                    candidates = this.getAdjacentTopics(currentTopic).filter(t => 
-                        t.id !== currentTopic.id
-                    );
-                }
-                
-                if (candidates.length === 0) {
-                    this.targetTopic = null;
-                    return createVector(0, 0);
-                }
-                
-                // 各候補トピックをスコアリング
-                let bestTopic = null;
-                let bestScore = -1;
-                
-                for (let topic of candidates) {
-                    // リーダーの興味との一致度を計算
-                    let interestMatch = 0;
-                    for (let k = 0; k < CONFIG.numDimensions; k++) {
-                        interestMatch += leader.latentInterests[k] * topic.vector[k];
-                    }
-                    
-                    // 熱ペナルティ（最近訪問したトピックは強く避ける）
-                    let heatPenalty = topic.heat * 0.8;
-                    
-                    // 訪問回数ペナルティ（何度も訪問したトピックは避ける）
-                    let visitPenalty = Math.min(topic.visitCount * 0.1, 0.5);
-                    
-                    // 未訪問ボーナス
-                    let noveltyBonus = topic.visitCount === 0 ? 0.2 : 0;
-                    
-                    // 最終スコア
-                    let score = interestMatch * (1 - heatPenalty) * (1 - visitPenalty) + noveltyBonus;
-                    
-                    if (score > bestScore) {
-                        bestScore = score;
-                        bestTopic = topic;
-                    }
-                }
-                
-                // 目標トピックを記録（到達まで維持）
-                this.targetTopic = bestTopic;
-                
-                if (!bestTopic) return createVector(0, 0);
-                
-                return this.getDirectionToTopic(bestTopic, leader);
             }
             
             /**
@@ -1603,11 +1388,14 @@
 
                 // 2. 健康診断（一定間隔で実行）[cite: 350-353, 438]
                 if (frameCount % leftOutCheckFrequency === 0) {
-                    this.calculateGroupHealth();
+                    this.judgeInterventionNecessity();
                 }
+
+                // 2. リーダーを決定 (this.currentLeader の更新)
+                this.decideCurrentLeader();
                 
                 // 3. 意思決定: 誰が議論をリードするかを決定 [cite: 354-361]
-                let steeringForce = this.calculateLeaderDirection();
+                let steeringForce = this.calculateSteeringVector(this.currentLeader);
 
                 // 定期的に離脱チェック
                 if (frameCount - this.lastLeftOutCheck >= leftOutCheckFrequency) {
@@ -1615,9 +1403,6 @@
                     this.checkLeftOut();
                     this.lastLeftOutCheck = frameCount;
                 }
-                
-                // 【重要】リーダーの目標方向を更新（targetTopicを設定）
-                this.calculateLeaderDirection();
                 
                 // 各メンバーの更新（groupを渡してリーダー情報にアクセス）
                 for (let m of this.members) {
@@ -1641,6 +1426,175 @@
                 this.updateCurrentTopic();
             }
 
+            /** 現在のリーダーを決定する拡張ロジック */
+            decideCurrentLeader() {
+                if (this.facilitatorActive && this.facilitator) {
+                    this.currentLeader = this.facilitator;
+                    return;
+                }
+                
+                // 通常時は最も興味が高いメンバー
+                let activeMembers = this.members.filter(m => !m.leftOut);
+                if (activeMembers.length === 0) {
+                    this.currentLeader = null;
+                    return;
+                }
+                return activeMembers.reduce((best, m) => 
+                    m.currentInterest > best.currentInterest ? m : best
+                );
+            }
+
+            // グループ健康度の診断と介入判定 [cite: 350-356, 438]
+            judgeInterventionNecessity() {
+                let vG = this.getGroupVelocity();
+                let atRiskCount = 0;
+
+                for (let m of this.members) {
+                    m.updateRiskLevel(vG, this.thresholds);
+                    if (m.riskLevel == 2 && !m.isFacilitator) atRiskCount++;
+                }
+
+                // 介入トリガーの判定 [cite: 278, 369]
+                if (!this.facilitatorActive && atRiskCount >= 1) {
+                    this.facilitatorActive = true; // 活性状態へ [cite: 280]
+                    this.stableFrames = 0;
+                    console.log(`Group ${this.id} facilitator activated.`);
+                } else if (this.facilitatorActive) {
+                    // ヒステリシス（振動防止）: 全員が安全な状態が一定期間続けば解除 [cite: 376-384]
+                    if (atRiskCount === 0) {
+                        this.stableFrames++;
+                        if (this.stableFrames > 60) {
+                            this.facilitatorActive = false; // 休眠状態へ [cite: 288]
+                            this.targetTopic = null; // アイコン消去のためにターゲットもクリア
+                        }
+                    } else {
+                        this.stableFrames = 0;
+                    }
+                }
+            }
+
+            calculateSteeringVector(leader) {
+                if (!this.currentLeader) return createVector(0, 0);
+
+                // どのトピックに向かうべきか（思考プロセス）
+                let bestTopic = this.facilitatorActive 
+                    ? this.chooseBalancedTopic()      // 公平性重視で選択
+                    : this.chooseInterestTopic(this.currentLeader); // 興味重視で選択
+
+                this.targetTopic = bestTopic;
+
+                // 最後に物理的な方向ベクトルを取得して返す
+                return this.getDirectionToTopic(this.targetTopic, this.currentLeader);
+            }
+
+            chooseBalancedTopic() {
+                let bestTopic = null;
+                let bestScore = -1;
+                let currentTopic = this.getCurrentTopic();
+                let candidates = this.getAdjacentTopics(currentTopic);
+
+                for (let topic of candidates) {
+                    let score = this.calculateBalancedScore(topic); // 公平性ベースのスコア [cite: 301-316]
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestTopic = topic;
+                    }
+                }
+                this.targetTopic = bestTopic;
+                return bestTopic;
+            }
+
+            /**
+             * 自然発生したリーダーが議論を導く方向を計算
+             * 
+             * 【現実的な議論の流れ】
+             * リーダーは以下を考慮して次の話題を選ぶ：
+             * 1. 現在のトピックから自然につながる（隣接トピック優先）
+             * 2. 自分の興味・専門に合う方向
+             * 3. 最近話した話題は避ける（繰り返し防止）
+             * 4. 直前のトピックには戻らない（循環防止）
+             * 
+             * 【循環防止】
+             * - グループが現在のトピックに「安定」するまで方向転換しない
+             * - 一度決めた目標は到達まで維持する
+             * - 直前のトピックへの戻りを禁止
+             * 
+             * @returns {p5.Vector} リーダーが向かいたい方向
+             */
+            chooseInterestTopic(leader) {
+                
+                // 【安定期間チェック】
+                // グループが現在のトピックに十分滞在するまで次の方向を決めない
+                // これにより「すぐ戻る」循環を防ぐ
+                if (this.topicSettleFrames < this.settleThreshold) {
+                    // まだ安定していない → 現在の目標があればそれを維持
+                    if (this.targetTopic) {
+                        return this.targetTopic;
+                    }
+                    // 目標がなければ動かない
+                    return createVector(0, 0);
+                }
+                
+                // 【目標トピックがまだ有効なら維持】
+                if (this.targetTopic && this.targetTopic.id !== this.currentTopicIndex) {
+                    return this.targetTopic;
+                }
+                
+                let currentTopic = this.getCurrentTopic();
+                
+                // 隣接トピックを取得（自然な会話の流れ）
+                let adjacentTopics = this.getAdjacentTopics(currentTopic);
+                
+                // 隣接がない場合は全トピックを対象に
+                let candidates = adjacentTopics.length > 0 ? adjacentTopics : this.topics;
+                
+                // 【フィルタリング】
+                // - 現在のトピックを除外
+                // - 直前のトピックを除外（循環防止）
+                candidates = candidates.filter(t => 
+                    t.id !== currentTopic.id && 
+                    t.id !== this.previousTopicId
+                );
+                
+                if (candidates.length === 0) candidates = this.topics;
+                
+                // 各候補トピックをスコアリング
+                let bestTopic = null;
+                let bestScore = -1;
+                
+                for (let topic of candidates) {
+                    // リーダーの興味との一致度を計算
+                    let interestMatch = 0;
+                    for (let k = 0; k < CONFIG.numDimensions; k++) {
+                        interestMatch += leader.latentInterests[k] * topic.vector[k];
+                    }
+                    
+                    // 熱ペナルティ（最近訪問したトピックは強く避ける）
+                    let heatPenalty = topic.heat * 0.8;
+                    
+                    // 訪問回数ペナルティ（何度も訪問したトピックは避ける）
+                    let visitPenalty = Math.min(topic.visitCount * 0.1, 0.5);
+                    
+                    // 未訪問ボーナス
+                    let noveltyBonus = topic.visitCount === 0 ? 0.2 : 0;
+                    
+                    // 最終スコア
+                    let score = interestMatch * (1 - heatPenalty) * (1 - visitPenalty) + noveltyBonus;
+                    
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestTopic = topic;
+                    }
+                }
+                
+                // 目標トピックを記録（到達まで維持）
+                this.targetTopic = bestTopic;
+                
+                // if (!bestTopic) return createVector(0, 0);
+                
+                return bestTopic;
+            }
+
             updateFacilitatorPosition(f) {
                 let riskMember = this.members.find(m => m.riskLevel >= 2); // 危機状態のメンバーを探す
                 if (riskMember && this.facilitatorActive) {
@@ -1653,22 +1607,6 @@
                     let steer = p5.Vector.sub(this.centroid, f.pos).limit(f.maxForce);
                     f.applyForce(steer);
                 }
-            }
-
-            getFacilitatorSteering() {
-                let bestTopic = null;
-                let bestScore = -1;
-                let candidates = this.getAdjacentTopics(this.getCurrentTopic());
-
-                for (let topic of candidates) {
-                    let score = this.calculateBalancedScore(topic); // 公平性ベースのスコア [cite: 301-316]
-                    if (score > bestScore) {
-                        bestScore = score;
-                        bestTopic = topic;
-                    }
-                }
-                this.targetTopic = bestTopic;
-                return this.getDirectionToTopic(bestTopic, this.facilitator);
             }
             
             /**
@@ -1728,7 +1666,7 @@
                 }
                 
                 // 現在のリーダーを取得
-                let leader = this.getCurrentLeader();
+                let leader = this.currentLeader;
                 
                 // リーダーの目標方向を表示（矢印）
                 if (leader && !this.halted && this.targetTopic) {
@@ -1781,7 +1719,7 @@
                 }
                 
                 // Group.draw() メソッド内に追加
-                if (this.facilitatorActive) {
+                if (this.facilitatorActive && this.targetTopic) {
                     // 1. グループの枠を強調（パルスするオレンジの枠）
                     let pulse = sin(frameCount * 0.1) * 50 + 200;
                     noFill();
@@ -2223,7 +2161,7 @@
             let sorted = [...group.members].sort((a, b) => b.currentVelocity - a.currentVelocity);
             
             // 現在のリーダーを取得
-            let leader = group.getCurrentLeader();
+            let leader = group.currentLeader;
             
             for (let m of sorted) {
                 let intPct = (m.getInterestNormalized() * 100).toFixed(0);
@@ -2287,7 +2225,7 @@
             
             for (let i = 0; i < groups.length; i++) {
                 let g = groups[i];
-                let leader = g.getCurrentLeader();
+                let leader = g.currentLeader;
                 let currentTopic = g.getCurrentTopic();
                 let targetTopic = g.targetTopic;
                 let isSelected = (i === selectedGroupId);
