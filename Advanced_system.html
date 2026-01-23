@@ -290,6 +290,14 @@
             minActiveMembers: 3     // グループ停止条件：アクティブメンバーがこの数未満で停止
         };
 
+        // 話者の状態定義
+        const MEMBER_STATE = {
+            SAFE: 'safe',         // 0: 安全
+            RISK: 'at_risk',      // 1: リスク（監視対象）
+            CRITICAL: 'critical', // 2: 危機（介入対象）
+            LEFT_OUT: 'left_out'  // 3: 離脱
+        };
+
         // ============================================
         // 20 Newsgroups データセットに基づくトピック定義
         // 各トピックは6次元の重みベクトルで表現（式1に対応）
@@ -530,9 +538,10 @@
                 this.maxSpeed = singleGroupMode ? 1.4 : 0.9;
                 this.maxForce = singleGroupMode ? 0.07 : 0.05;
                 this.leftOut = false;  // 離脱フラグ
-                this.riskLevel = 0;    // 離脱リスクレベル
                 this.velocityHistory = []; // トレンド分析用
                 
+                this.riskLevel = MEMBER_STATE.SAFE; // 初期値
+
                 // ============================================
                 // 潜在興味ベクトル W_i の生成（式2）
                 // メンバーごとに異なる興味プロファイルを持つ
@@ -591,14 +600,14 @@
                 let v_lb = groupVelocity - this.currentVelocity;
                 
                 if (v_lb > thresholds.leftout) {
-                    this.riskLevel = 3;
-                    this.leftOut = true; // 離脱確定 [cite: 240]
+                    this.riskLevel = MEMBER_STATE.LEFT_OUT;
+                    this.leftOut = true; // 離脱確定
                 } else if (v_lb > thresholds.critical) {
-                    this.riskLevel = 2; // 危機状態 (ファシリテーター介入対象) [cite: 235-237]
+                    this.riskLevel = MEMBER_STATE.CRITICAL; // 危機状態 (介入対象)
                 } else if (v_lb > thresholds.safe || this.getVelocityTrend() < -0.01) {
-                    this.riskLevel = 1; // リスク状態 (監視対象) [cite: 232-234]
+                    this.riskLevel = MEMBER_STATE.RISK; // リスク状態 (監視対象)
                 } else {
-                    this.riskLevel = 0; // 安全 [cite: 231]
+                    this.riskLevel = MEMBER_STATE.SAFE; // 安全
                 }
             }
             
@@ -990,18 +999,13 @@
                 text('⚖️', 0, 0); 
             }
 
-            // リスクレベルに応じたハロー（光輪）[cite: 233, 236, 444]
             drawRiskHighlight(s) {
                 noStroke();
-                if (this.riskLevel === 1) { // Risk状態
-                    // 注意状態 (Risk): 青色
-                    // 暗い背景でも見やすいシアン系の青を採用
-                    fill(0, 191, 255, 120);
+                if (this.riskLevel === MEMBER_STATE.RISK) {
+                    fill(0, 191, 255, 120); // 青色
                     ellipse(0, 0, 20 * s, 20 * s);
-                } else if (this.riskLevel === 2) { // Critical状態
-                    // 危機状態 (Critical): 黄色
-                    // 警告として目立つ鮮やかな黄色を採用
-                    fill(200, 200, 0, 150);
+                } else if (this.riskLevel === MEMBER_STATE.CRITICAL) {
+                    fill(200, 200, 0, 150); // 黄色
                     ellipse(0, 0, 25 * s, 25 * s);
                 }
             }
@@ -1354,24 +1358,21 @@
 
                 for (let m of this.members) {
                     m.updateRiskLevel(vG, this.thresholds);
-                    if (m.riskLevel == 2 && !m.isFacilitator) atRiskCount++;
+                    // 危機状態(CRITICAL)をカウント
+                    if (m.riskLevel === MEMBER_STATE.CRITICAL && !m.isFacilitator) atRiskCount++;
                 }
 
-                // 介入トリガーの判定 [cite: 278, 369]
                 if (!this.facilitatorActive && atRiskCount >= 1) {
-                    this.facilitatorActive = true; // 活性状態へ [cite: 280]
+                    this.facilitatorActive = true;
                     this.stableFrames = 0;
                 } else if (this.facilitatorActive) {
-                    // ヒステリシス（振動防止）: 全員が安全な状態が一定期間続けば解除 [cite: 376-384]
                     if (atRiskCount === 0) {
                         this.stableFrames++;
                         if (this.stableFrames > 2) {
-                            this.facilitatorActive = false; // 休眠状態へ [cite: 288]
-                            this.targetTopic = null; // アイコン消去のためにターゲットもクリア
-                            // console.log(`Group ${this.id} facilitator deactivated.`);
+                            this.facilitatorActive = false;
+                            this.targetTopic = null;
                         }
                     } else {
-                        // 【重要】リスク者が一人でもいたら、安定カウントをリセット
                         this.stableFrames = 0;
                     }
                 }
@@ -1557,14 +1558,13 @@
             }
 
             updateFacilitatorPosition(f) {
-                let riskMember = this.members.find(m => m.riskLevel == 2); // 危機状態のメンバーを探す
+                // 危機状態(CRITICAL)のメンバーを探す
+                let riskMember = this.members.find(m => m.riskLevel === MEMBER_STATE.CRITICAL); 
                 if (riskMember && this.facilitatorActive) {
-                    // ターゲットメンバーの少し後ろ（羊飼いポジション）へ移動 
                     let targetPos = p5.Vector.sub(riskMember.pos, riskMember.vel.copy().setMag(20));
                     let steer = p5.Vector.sub(targetPos, f.pos).limit(f.maxForce * 2);
                     f.applyForce(steer);
                 } else {
-                    // 通常時は重心（ニュートラル位置）に配置 
                     let steer = p5.Vector.sub(this.centroid, f.pos).limit(f.maxForce);
                     f.applyForce(steer);
                 }
@@ -1732,18 +1732,20 @@
                     text('⚠️ INTERVENTION ACTIVE', this.bounds.x + this.bounds.w - 5, this.bounds.y + 5);
                 }
 
-                // Group.draw() メソッド内、メンバー描画の前後に追加
                 if (this.facilitatorActive) {
-                    let riskMember = this.members.find(m => m.riskLevel >= 2);
+                    // 介入が必要なレベル（CRITICAL）のメンバーを特定
+                    let riskMember = this.members.find(m => 
+                        m.riskLevel === MEMBER_STATE.CRITICAL
+                    );
                     if (riskMember && this.facilitator) {
-                        // ファシリテーターからリスクメンバーへの支援ライン（点線）
+                        // ライン描画
                         stroke(255, 200, 0, 150);
                         strokeWeight(1);
                         drawingContext.setLineDash([5, 5]);
                         line(this.facilitator.pos.x, this.facilitator.pos.y, riskMember.pos.x, riskMember.pos.y);
                         drawingContext.setLineDash([]);
                         
-                        // リスクメンバーの足元にターゲットマークを表示
+                        // ターゲットマーク
                         noFill();
                         stroke(255, 100, 0);
                         ellipse(riskMember.pos.x, riskMember.pos.y, 30, 30);
