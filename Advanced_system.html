@@ -347,6 +347,7 @@
         let totalTopicChanges = 0;          // トピック遷移の総数
         let leftOutLog = [];                // 離脱ログ
         let singleGroupMode = false;        // モード切替: false=4グループ, true=1グループ
+        let logger; // グローバルな観測者オブジェクト
 
         // ============================================
         // Boidsアルゴリズムのパラメータ
@@ -527,6 +528,7 @@
                 this.groupId = groupId;
                 this.memberId = memberId;
                 this.isFacilitator = isFacilitator; // ファシリテーターフラグ [cite: 434]
+
                 this.color = isFacilitator ? '#ffffff' : CONFIG.memberColors[memberId % CONFIG.memberColors.length];
 
                 // 位置・速度・加速度ベクトル（p5.jsのVector使用）
@@ -594,20 +596,44 @@
                 return (last - first) / this.velocityHistory.length; // 負の傾き = エンゲージメント低下 [cite: 242]
             }
 
-            updateRiskLevel(groupVelocity, thresholds) {
+            updateRiskLevel(groupVelocity, thresholds, groupName) {
+                if (this.isFacilitator) {
+                    this.riskLevel = MEMBER_STATE.SAFE;
+                    return;
+                }
                 if (this.leftOut) return;
-                
+
+                const prevRisk = this.riskLevel;
                 let v_lb = groupVelocity - this.currentVelocity;
-                
+
+                // 状態判定のロジックをここに集約
                 if (v_lb > thresholds.leftout) {
                     this.riskLevel = MEMBER_STATE.LEFT_OUT;
-                    this.leftOut = true; // 離脱確定
+                    this.leftOut = true;
+
+                    // UIログへの記録
+                    let entry = `[${groupName}] M${this.memberId + 1}: v_lb=${v_lb.toFixed(2)}`;
+                    leftOutLog.unshift(entry);
+                    if (leftOutLog.length > 15) leftOutLog.pop();
+
+                    // CSVオブザーバーへの記録
+                    logger.recordEvent('MEMBER_FREEZE', { memberId: this.memberId });
+                    
                 } else if (v_lb > thresholds.critical) {
-                    this.riskLevel = MEMBER_STATE.CRITICAL; // 危機状態 (介入対象)
+                    this.riskLevel = MEMBER_STATE.CRITICAL;
                 } else if (v_lb > thresholds.safe || this.getVelocityTrend() < -0.01) {
-                    this.riskLevel = MEMBER_STATE.RISK; // リスク状態 (監視対象)
+                    this.riskLevel = MEMBER_STATE.RISK;
                 } else {
-                    this.riskLevel = MEMBER_STATE.SAFE; // 安全
+                    this.riskLevel = MEMBER_STATE.SAFE;
+                }
+
+                // 状態変化時のイベント記録
+                if (prevRisk !== this.riskLevel) {
+                    if (this.riskLevel === MEMBER_STATE.CRITICAL) {
+                        logger.recordEvent('MEMBER_CRITICAL', { memberId: this.memberId });
+                    } else if (prevRisk === MEMBER_STATE.CRITICAL && this.riskLevel !== MEMBER_STATE.LEFT_OUT) {
+                        logger.recordEvent('MEMBER_RECOVERY', { memberId: this.memberId });
+                    }
                 }
             }
             
@@ -1258,34 +1284,6 @@
                 return count > 0 ? sum / count : 0;
             }
             
-            /**
-             * 離脱メンバーをチェック（式7）
-             * v_i_lb = v_G - v_i > v₀ なら離脱
-             */
-            checkLeftOut() {
-                let vG = this.getGroupVelocity();
-                
-                for (let m of this.members) {
-                    if (!m.leftOut) {
-                        // 離脱速度を計算
-                        let v_lb = vG - m.currentVelocity;
-                        
-                        // 閾値を超えたら離脱
-                        if (v_lb > leftOutThreshold) {
-                            m.leftOut = true;
-                            let entry = `[${CONFIG.groupNames[this.id]}] M${m.memberId+1}: v_lb=${v_lb.toFixed(2)}`;
-                            leftOutLog.unshift(entry);
-                            if (leftOutLog.length > 15) leftOutLog.pop();
-                        }
-                    }
-                }
-                
-                // アクティブメンバーが少なすぎる場合はグループを停止
-                if (this.getActiveCount() < CONFIG.minActiveMembers) {
-                    this.halted = true;
-                }
-            }
-            
             /** アクティブメンバー数を取得 */
             getActiveCount() { 
                 return this.members.filter(m => !m.leftOut).length; 
@@ -1306,17 +1304,11 @@
                 // トピックの熱を減衰
                 for (let t of this.topics) t.coolDown();
 
-                // 定期的に離脱チェック
-                if (frameCount - this.lastLeftOutCheck >= leftOutCheckFrequency) {
-                    this.updateMemberInterests();
-                    this.checkLeftOut();
-                    this.lastLeftOutCheck = frameCount;
-                }
-
                 // 2. 健康診断（一定間隔で実行）[cite: 350-353, 438]
                 if (frameCount % leftOutCheckFrequency === 0) {
+                    this.updateMemberInterests();
                     this.judgeInterventionNecessity();
-                    console.log(`Group ${this.id} facilitator active: ${this.facilitatorActive}`);
+                    updateUI(); // UI表示を更新
                 }
 
                 // 2. リーダーを決定 (this.currentLeader の更新)
@@ -1348,6 +1340,17 @@
                 
                 this.calculateCentroid();
                 this.updateCurrentTopic();
+                logger.logFrame(this);
+
+                // 【自動化の追加】
+                const EXPERIMENT_LIMIT = 18000; // 5分間で自動停止
+                if (frameCount === EXPERIMENT_LIMIT) {
+                    console.log(`Group ${this.id}: 実験終了。データを出力します。`);
+                    logger.downloadCSV(this.id);
+                    this.halted = true; // グループを停止
+                    noLoop(); // p5.jsの描画ループを停止
+                    alert("シミュレーションが終了し、CSVを出力しました。");
+                }
             }
 
             // グループ健康度の診断と介入判定 [cite: 350-356, 438]
@@ -1365,12 +1368,14 @@
                 if (!this.facilitatorActive && atRiskCount >= 1) {
                     this.facilitatorActive = true;
                     this.stableFrames = 0;
+                    logger.recordEvent('INTERVENTION_START', { targetTopicId: this.targetTopic ? this.targetTopic.id : null });
                 } else if (this.facilitatorActive) {
                     if (atRiskCount === 0) {
                         this.stableFrames++;
                         if (this.stableFrames > 2) {
                             this.facilitatorActive = false;
                             this.targetTopic = null;
+                            logger.recordEvent('INTERVENTION_END');
                         }
                     } else {
                         this.stableFrames = 0;
@@ -1586,6 +1591,8 @@
                 
                 // トピックが変わった場合
                 if (newTopic && newTopic.id !== this.currentTopicIndex) {
+                    logger.recordEvent('TOPIC_CHANGE', { from: this.currentTopicIndex, to: newTopic.id });
+
                     // 直前のトピックを記録（戻り防止用）
                     this.previousTopicId = this.currentTopicIndex;
                     
@@ -1593,7 +1600,6 @@
                     newTopic.onEnter();
                     totalTopicChanges++;
                     this.updateMemberInterests();
-                    this.checkLeftOut();
                     this.recordInterestSnapshot();
                     
                     // 安定カウンターをリセット
@@ -1795,6 +1801,112 @@
             }
         }
 
+        /**
+         * MetricsLogger: シミュレーションの「観測者」クラス
+         */
+        class MetricsLogger {
+            constructor() {
+                this.timeline = []; // 毎フレームの統計
+                this.events = [];   // 状態変化のログ
+            }
+
+            /** 毎フレームのスナップショットを記録 */
+            logFrame(group) {
+                const activeMembers = group.members.filter(m => !m.isFacilitator);
+                const interests = activeMembers.map(m => m.currentInterest);
+                const velocities = activeMembers.map(m => m.currentVelocity);
+
+                const snapshot = {
+                    frame: frameCount,
+                    groupId: group.id, // ここにGroupIDを挿入
+                    facilitatorActive: group.facilitatorActive ? 1 : 0,
+                    currentTopicId: group.currentTopicIndex, // トピック多様性分析用
+                    groupVelocity: group.getGroupVelocity(),
+                    atRiskCount: group.members.filter(m => m.riskLevel === MEMBER_STATE.RISK).length,
+                    criticalCount: group.members.filter(m => m.riskLevel === MEMBER_STATE.CRITICAL).length,
+                    interestMean: interests.reduce((a, b) => a + b, 0) / interests.length,
+                    interestSD: this.calculateSD(interests),
+                    // 個別データのフラット化（CSV出力時に列を分けるため）
+                    ...this.serializeMemberData(activeMembers)
+                };
+                this.timeline.push(snapshot);
+            }
+
+            /** 重要なイベントを記録 */
+            recordEvent(type, detail = {}) {
+                this.events.push({
+                    frame: frameCount,
+                    type: type,
+                    ...detail
+                });
+                // 開発時の生存確認用
+                if (type.includes('CRITICAL') || type.includes('RECOVERY')) {
+                    console.log(`[Metric Event] ${type}:`, detail);
+                }
+            }
+
+            // --- ヘルパー関数 ---
+            calculateSD(arr) {
+                const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+                return Math.sqrt(arr.reduce((s, v) => s + Math.pow(v - mean, 2), 0) / arr.length);
+            }
+
+            serializeMemberData(members) {
+                const data = {};
+                members.forEach((m, i) => {
+                    const id = m.memberId;
+                    data[`m${id}_state`] = m.riskLevel; // MEMBER_STATE ('safe', 'critical' など)
+                    data[`m${id}_x`] = m.pos.x.toFixed(1); // 座標x
+                    data[`m${id}_y`] = m.pos.y.toFixed(1); // 座標y
+                    data[`m${id}_interest`] = m.currentInterest.toFixed(3);
+                    data[`m${id}_velocity`] = m.currentVelocity.toFixed(3);
+                });
+                return data;
+            }
+
+            /**
+             * 蓄積データをCSVとしてダウンロード出力する
+             */
+            downloadCSV(groupLabel = "all") {
+                if (this.timeline.length === 0) {
+                    alert("保存するデータがありません。");
+                    return;
+                }
+
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                const fileName = `group-${groupLabel}_sim_data_${timestamp}.csv`;
+
+                // ヘッダーの生成
+                const firstEntry = this.timeline[0];
+                const headers = Object.keys(firstEntry);
+                
+                // CSV行の作成
+                const csvRows = [headers.join(',')];
+                
+                for (const row of this.timeline) {
+                    const values = headers.map(header => {
+                        const val = row[header];
+                        // カンマを含む可能性があるデータ（座標など）はダブルクォートで囲む
+                        return `"${val}"`;
+                    });
+                    csvRows.push(values.join(','));
+                }
+
+                // Blobの作成とダウンロード
+                const csvString = csvRows.join('\n');
+                const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                
+                const link = document.createElement("a");
+                link.setAttribute("href", url);
+                link.setAttribute("download", fileName);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+
         // ============================================
         // グラフ描画関数
         // HTML Canvas APIを使用（高DPIディスプレイ対応）
@@ -1992,6 +2104,9 @@
          * グループとメンバーを生成
          */
         function initSimulation() {
+            // --- 1. 依存関係の最優先初期化 ---
+            logger = new MetricsLogger();
+
             groups = [];
             totalTopicChanges = 0;
             leftOutLog = [];
@@ -2028,6 +2143,8 @@
             
             updateModeButton();
             updateUI();
+
+            console.log("Simulation initialized with MetricsLogger.");
         }
         
         /** モード切替ボタンのテキストを更新 */
@@ -2097,7 +2214,6 @@
             document.getElementById('force-check-btn').addEventListener('click', () => {
                 for (let g of groups) { 
                     g.updateMemberInterests(); 
-                    g.checkLeftOut(); 
                 }
                 updateUI();
             });
