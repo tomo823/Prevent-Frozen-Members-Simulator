@@ -304,37 +304,117 @@
         // weights配列: [Politics, Tech, Sports, Science, Religion, Commerce]
         // ============================================
         const NEWSGROUP_TOPICS = [
-            // 政治系トピック（Politics次元が高い）
-            { name: 'talk.politics.misc', weights: [0.65, 0.05, 0.02, 0.08, 0.10, 0.10] },
-            { name: 'talk.politics.guns', weights: [0.55, 0.08, 0.05, 0.02, 0.15, 0.15] },
-            { name: 'talk.politics.mideast', weights: [0.50, 0.05, 0.02, 0.05, 0.30, 0.08] },
-            
-            // 技術系トピック（Tech次元が高い）
-            { name: 'comp.graphics', weights: [0.02, 0.70, 0.02, 0.18, 0.02, 0.06] },
-            { name: 'comp.os.ms-windows', weights: [0.03, 0.72, 0.02, 0.10, 0.02, 0.11] },
-            { name: 'comp.sys.mac.hardware', weights: [0.02, 0.68, 0.02, 0.12, 0.02, 0.14] },
-            { name: 'comp.windows.x', weights: [0.02, 0.75, 0.02, 0.13, 0.02, 0.06] },
-            
-            // スポーツ系トピック（Sports次元が高い）
-            { name: 'rec.sport.baseball', weights: [0.05, 0.03, 0.70, 0.02, 0.02, 0.18] },
-            { name: 'rec.sport.hockey', weights: [0.04, 0.03, 0.72, 0.02, 0.02, 0.17] },
-            { name: 'rec.autos', weights: [0.05, 0.15, 0.45, 0.10, 0.02, 0.23] },
-            { name: 'rec.motorcycles', weights: [0.04, 0.12, 0.48, 0.08, 0.02, 0.26] },
-            
-            // 科学系トピック（Science次元が高い）
-            { name: 'sci.space', weights: [0.10, 0.18, 0.02, 0.60, 0.02, 0.08] },
-            { name: 'sci.med', weights: [0.08, 0.12, 0.05, 0.58, 0.05, 0.12] },
-            { name: 'sci.electronics', weights: [0.03, 0.30, 0.02, 0.52, 0.02, 0.11] },
-            { name: 'sci.crypt', weights: [0.12, 0.28, 0.02, 0.48, 0.02, 0.08] },
-            
-            // 宗教系トピック（Religion次元が高い）
-            { name: 'soc.religion.christian', weights: [0.15, 0.02, 0.02, 0.03, 0.70, 0.08] },
-            { name: 'talk.religion.misc', weights: [0.18, 0.03, 0.02, 0.05, 0.65, 0.07] },
-            { name: 'alt.atheism', weights: [0.20, 0.05, 0.02, 0.15, 0.50, 0.08] },
-            
-            // 商業系トピック（Commerce次元が高い）
-            { name: 'misc.forsale', weights: [0.05, 0.15, 0.10, 0.05, 0.02, 0.63] },
-            { name: 'rec.autos.marketplace', weights: [0.03, 0.10, 0.25, 0.05, 0.02, 0.55] },
+            // --- POLITICS (20) ---
+            { name: 'Pol.Federal Budget', weights: [0.75, 0.05, 0.02, 0.03, 0.05, 0.10] },
+            { name: 'Pol.Gun Control Law', weights: [0.70, 0.05, 0.05, 0.05, 0.05, 0.05] },
+            { name: 'Pol.Mideast Conflict', weights: [0.65, 0.05, 0.02, 0.03, 0.20, 0.05] },
+            { name: 'Pol.Diplomatic Immunity', weights: [0.68, 0.02, 0.02, 0.05, 0.08, 0.15] },
+            { name: 'Pol.Voting Rights', weights: [0.72, 0.03, 0.02, 0.05, 0.10, 0.08] },
+            { name: 'Pol.Immigration Policy', weights: [0.65, 0.05, 0.05, 0.05, 0.05, 0.15] },
+            { name: 'Pol.Tax Reform', weights: [0.60, 0.10, 0.02, 0.03, 0.05, 0.20] },
+            { name: 'Pol.Constitutional Law', weights: [0.75, 0.02, 0.02, 0.05, 0.10, 0.06] },
+            { name: 'Pol.Propaganda Study', weights: [0.55, 0.15, 0.05, 0.15, 0.05, 0.05] },
+            { name: 'Pol.Public Welfare', weights: [0.62, 0.05, 0.03, 0.05, 0.10, 0.15] },
+            { name: 'Pol.Environmental Law', weights: [0.58, 0.05, 0.02, 0.25, 0.02, 0.08] },
+            { name: 'Pol.Labor Union', weights: [0.65, 0.05, 0.02, 0.03, 0.05, 0.20] },
+            { name: 'Pol.Election Campaign', weights: [0.70, 0.10, 0.02, 0.03, 0.05, 0.10] },
+            { name: 'Pol.Human Rights', weights: [0.65, 0.03, 0.02, 0.05, 0.15, 0.10] },
+            { name: 'Pol.City Council', weights: [0.70, 0.05, 0.05, 0.02, 0.03, 0.15] },
+            { name: 'Pol.Lobbying Misc', weights: [0.60, 0.05, 0.02, 0.03, 0.05, 0.25] },
+            { name: 'Pol.Civil Liberties', weights: [0.72, 0.05, 0.02, 0.05, 0.10, 0.06] },
+            { name: 'Pol.International Trade', weights: [0.50, 0.10, 0.02, 0.03, 0.05, 0.30] },
+            { name: 'Pol.Crypto Regulation', weights: [0.45, 0.35, 0.02, 0.03, 0.02, 0.13] },
+            { name: 'Pol.Social Security', weights: [0.65, 0.05, 0.02, 0.03, 0.05, 0.20] },
+
+            // --- TECH (20) ---
+            { name: 'Tech.GPU Architecture', weights: [0.02, 0.82, 0.02, 0.10, 0.01, 0.03] },
+            { name: 'Tech.OS Kernel Dev', weights: [0.05, 0.85, 0.01, 0.05, 0.01, 0.03] },
+            { name: 'Tech.Ray Tracing', weights: [0.01, 0.78, 0.02, 0.15, 0.01, 0.03] },
+            { name: 'Tech.Mac Hardware', weights: [0.02, 0.70, 0.03, 0.05, 0.02, 0.18] },
+            { name: 'Tech.Database SQL', weights: [0.03, 0.75, 0.02, 0.05, 0.02, 0.13] },
+            { name: 'Tech.Network Security', weights: [0.10, 0.70, 0.01, 0.10, 0.01, 0.08] },
+            { name: 'Tech.Parallel Comp', weights: [0.01, 0.80, 0.01, 0.15, 0.01, 0.02] },
+            { name: 'Tech.UI Design', weights: [0.02, 0.72, 0.03, 0.10, 0.03, 0.10] },
+            { name: 'Tech.Compiler Optim', weights: [0.01, 0.88, 0.01, 0.08, 0.01, 0.01] },
+            { name: 'Tech.Cloud Infra', weights: [0.05, 0.75, 0.01, 0.05, 0.01, 0.13] },
+            { name: 'Tech.Mobile Apps', weights: [0.03, 0.65, 0.02, 0.05, 0.02, 0.23] },
+            { name: 'Tech.X-Windows Protocol', weights: [0.01, 0.85, 0.01, 0.10, 0.01, 0.02] },
+            { name: 'Tech.Virtual Reality', weights: [0.02, 0.70, 0.05, 0.15, 0.03, 0.05] },
+            { name: 'Tech.Embedded Systems', weights: [0.01, 0.78, 0.02, 0.15, 0.01, 0.03] },
+            { name: 'Tech.Open Source Law', weights: [0.30, 0.40, 0.01, 0.04, 0.05, 0.20] },
+            { name: 'Tech.Storage RAID', weights: [0.01, 0.75, 0.02, 0.05, 0.02, 0.15] },
+            { name: 'Tech.Game Engine', weights: [0.01, 0.72, 0.15, 0.08, 0.01, 0.03] },
+            { name: 'Tech.Machine Learning', weights: [0.05, 0.65, 0.02, 0.25, 0.01, 0.02] },
+            { name: 'Tech.Cryptography', weights: [0.15, 0.65, 0.01, 0.15, 0.01, 0.03] },
+            { name: 'Tech.Legacy Systems', weights: [0.02, 0.68, 0.02, 0.05, 0.03, 0.20] },
+
+            // --- SPORTS (15) ---
+            { name: 'Sport.MLB Playoffs', weights: [0.02, 0.02, 0.85, 0.01, 0.01, 0.09] },
+            { name: 'Sport.NHL Goaltending', weights: [0.01, 0.01, 0.88, 0.01, 0.01, 0.08] },
+            { name: 'Sport.NBA Free Agency', weights: [0.05, 0.02, 0.75, 0.01, 0.01, 0.16] },
+            { name: 'Sport.Engine Tuning', weights: [0.03, 0.30, 0.45, 0.05, 0.01, 0.16] },
+            { name: 'Sport.F1 Aero', weights: [0.02, 0.25, 0.50, 0.15, 0.01, 0.07] },
+            { name: 'Sport.NFL Draft', weights: [0.05, 0.02, 0.80, 0.01, 0.01, 0.11] },
+            { name: 'Sport.Tennis GrandSlam', weights: [0.02, 0.02, 0.82, 0.02, 0.02, 0.10] },
+            { name: 'Sport.Bicycle Tech', weights: [0.02, 0.15, 0.60, 0.05, 0.01, 0.17] },
+            { name: 'Sport.Olympics Misc', weights: [0.15, 0.05, 0.65, 0.05, 0.05, 0.05] },
+            { name: 'Sport.Hockey Gear', weights: [0.01, 0.12, 0.70, 0.02, 0.01, 0.14] },
+            { name: 'Sport.Soccer League', weights: [0.02, 0.02, 0.85, 0.01, 0.02, 0.08] },
+            { name: 'Sport.Golf Mechanics', weights: [0.01, 0.05, 0.75, 0.10, 0.01, 0.08] },
+            { name: 'Sport.Stadium Design', weights: [0.10, 0.15, 0.45, 0.10, 0.02, 0.18] },
+            { name: 'Sport.Fantasy League', weights: [0.02, 0.10, 0.65, 0.03, 0.01, 0.19] },
+            { name: 'Sport.Auto Auction', weights: [0.02, 0.05, 0.35, 0.05, 0.01, 0.52] },
+
+            // --- SCIENCE (15) ---
+            { name: 'Sci.Orbit Dynamics', weights: [0.05, 0.10, 0.01, 0.80, 0.01, 0.03] },
+            { name: 'Sci.Neural Networks', weights: [0.02, 0.35, 0.01, 0.60, 0.01, 0.01] },
+            { name: 'Sci.Surgery Advances', weights: [0.02, 0.15, 0.02, 0.75, 0.03, 0.03] },
+            { name: 'Sci.Radio Telescope', weights: [0.05, 0.25, 0.01, 0.65, 0.02, 0.02] },
+            { name: 'Sci.Virology Study', weights: [0.10, 0.05, 0.01, 0.80, 0.02, 0.02] },
+            { name: 'Sci.Quantum Comp', weights: [0.02, 0.45, 0.01, 0.50, 0.01, 0.01] },
+            { name: 'Sci.Space Missions', weights: [0.15, 0.15, 0.01, 0.60, 0.02, 0.07] },
+            { name: 'Sci.Drug Dev', weights: [0.05, 0.10, 0.02, 0.65, 0.03, 0.15] },
+            { name: 'Sci.Circuit Design', weights: [0.01, 0.40, 0.02, 0.52, 0.01, 0.04] },
+            { name: 'Sci.Climate Data', weights: [0.15, 0.10, 0.02, 0.65, 0.02, 0.06] },
+            { name: 'Sci.Physics Particle', weights: [0.05, 0.05, 0.01, 0.85, 0.02, 0.02] },
+            { name: 'Sci.Geology Seism', weights: [0.08, 0.08, 0.02, 0.75, 0.02, 0.05] },
+            { name: 'Sci.Astrobiology', weights: [0.05, 0.05, 0.01, 0.75, 0.10, 0.04] },
+            { name: 'Sci.Materials Eng', weights: [0.02, 0.15, 0.05, 0.70, 0.01, 0.07] },
+            { name: 'Sci.Oceanography', weights: [0.08, 0.05, 0.02, 0.80, 0.01, 0.04] },
+
+            // --- RELIGION (15) ---
+            { name: 'Rel.New Testament', weights: [0.10, 0.01, 0.01, 0.03, 0.80, 0.05] },
+            { name: 'Rel.Atheist Ethics', weights: [0.25, 0.05, 0.01, 0.15, 0.50, 0.04] },
+            { name: 'Rel.Islamic History', weights: [0.20, 0.02, 0.01, 0.02, 0.70, 0.05] },
+            { name: 'Rel.Church Music', weights: [0.05, 0.08, 0.02, 0.02, 0.75, 0.08] },
+            { name: 'Rel.Theology Misc', weights: [0.15, 0.01, 0.01, 0.05, 0.75, 0.03] },
+            { name: 'Rel.Sects Comparison', weights: [0.15, 0.01, 0.01, 0.03, 0.75, 0.05] },
+            { name: 'Rel.Bioethics Debate', weights: [0.20, 0.10, 0.01, 0.25, 0.40, 0.04] },
+            { name: 'Rel.Eastern Ortho', weights: [0.12, 0.02, 0.01, 0.03, 0.78, 0.04] },
+            { name: 'Rel.Faith Healing', weights: [0.05, 0.02, 0.02, 0.25, 0.60, 0.06] },
+            { name: 'Rel.Biblical Arch', weights: [0.05, 0.05, 0.01, 0.25, 0.60, 0.04] },
+            { name: 'Rel.Skepticism', weights: [0.20, 0.10, 0.02, 0.15, 0.45, 0.08] },
+            { name: 'Rel.Prophecy Misc', weights: [0.10, 0.02, 0.01, 0.02, 0.80, 0.05] },
+            { name: 'Rel.Traditions', weights: [0.15, 0.01, 0.01, 0.02, 0.75, 0.06] },
+            { name: 'Rel.Philosophy', weights: [0.20, 0.05, 0.02, 0.10, 0.58, 0.05] },
+            { name: 'Rel.Art & Icon', weights: [0.05, 0.05, 0.02, 0.03, 0.75, 0.10] },
+
+            // --- COMMERCE (15) ---
+            { name: 'Com.Real Estate', weights: [0.15, 0.05, 0.02, 0.03, 0.02, 0.73] },
+            { name: 'Com.PC Marketplace', weights: [0.02, 0.35, 0.03, 0.05, 0.01, 0.54] },
+            { name: 'Com.E-Commerce Law', weights: [0.30, 0.20, 0.01, 0.04, 0.02, 0.43] },
+            { name: 'Com.Car Parts sale', weights: [0.02, 0.15, 0.25, 0.05, 0.01, 0.52] },
+            { name: 'Com.Wholesale Misc', weights: [0.05, 0.05, 0.05, 0.05, 0.02, 0.78] },
+            { name: 'Com.Stock Trading', weights: [0.15, 0.15, 0.02, 0.03, 0.02, 0.63] },
+            { name: 'Com.Auction House', weights: [0.05, 0.05, 0.10, 0.05, 0.02, 0.73] },
+            { name: 'Com.Credit Systems', weights: [0.20, 0.15, 0.02, 0.03, 0.02, 0.58] },
+            { name: 'Com.Logistics Dev', weights: [0.05, 0.25, 0.02, 0.05, 0.01, 0.62] },
+            { name: 'Com.Ad Agencies', weights: [0.08, 0.12, 0.05, 0.05, 0.05, 0.65] },
+            { name: 'Com.Job Market', weights: [0.15, 0.10, 0.03, 0.02, 0.02, 0.68] },
+            { name: 'Com.Retailing', weights: [0.05, 0.05, 0.05, 0.05, 0.02, 0.78] },
+            { name: 'Com.Patents Misc', weights: [0.25, 0.15, 0.02, 0.10, 0.01, 0.47] },
+            { name: 'Com.Startups', weights: [0.10, 0.25, 0.02, 0.05, 0.02, 0.56] },
+            { name: 'Com.Consumer Rights', weights: [0.25, 0.05, 0.05, 0.05, 0.02, 0.58] }
         ];
 
         // ============================================
@@ -495,6 +575,7 @@
                 
                 this.heat = 0;          // 訪問熱（最近訪問されたかを示す）
                 this.visitCount = 0;    // 訪問回数
+                this.setData(newsgroup);     // 共通化のためにメソッドに切り出し
             }
             
             /** トピックに入った時の処理 */
@@ -511,6 +592,96 @@
             /** 短縮名を取得（例: "talk.politics.misc" → "misc"） */
             getShortName() { 
                 return this.name.split('.').pop(); 
+            }
+
+            /**
+             * 話題データをセット・更新するメソッド
+             * @param {Object} newsgroup - TopicPoolから取得したデータ
+             */
+            setData(newsgroup) {
+                if (!newsgroup) return;
+
+                this.name = newsgroup.name;
+                
+                // トピックベクトル T_n の生成（式1）
+                // 元の重みに小さなランダム変動を加える
+                this.vector = newsgroup.weights.map(w => {
+                    let varied = w + (Math.random() - 0.5) * 0.05;
+                    return Math.max(0.01, Math.min(0.95, varied));
+                });
+                
+                // 正規化（合計が1になるように）
+                let sum = this.vector.reduce((a, b) => a + b, 0);
+                this.vector = this.vector.map(v => v / sum);
+                
+                // 主要次元を特定
+                this.primaryDim = this.vector.indexOf(Math.max(...this.vector));
+                
+                // 状態のリセット
+                this.heat = 0;       // 訪問熱をリセット
+                this.visitCount = 0; // 訪問回数をリセット
+                this.justRefreshed = true; // UI演出用フラグ
+            }
+        }
+
+        class TopicPool {
+            constructor(baseTopics, waitingLimit = 20) {
+                this.pool = [...baseTopics]; // 100個の初期山札
+                this.waitingList = [];       // 使用中のため再利用不可なトピック
+                this.waitingLimit = waitingLimit; // 何個新しい話題が出たら再配置可能にするか
+                
+                // 最初はシャッフル
+                this.shuffle(this.pool);
+            }
+
+            shuffle(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+            }
+
+            /** 山札から一つ引く */
+            drawTopic() {
+                // 山札が空、かつ待機列に話題がある場合に補充を実行
+                if (this.pool.length === 0) {
+                    if (this.waitingList.length > 0) {
+                        this.refillFromWaiting();
+                    } else {
+                        // 万が一待機列も空（初期設定ミスなど）の場合のセーフティ
+                        console.error("❌ Topic Pool Error: ストックが完全に枯渇しました。");
+                        return null; 
+                    }
+                }
+                
+                const topicData = this.pool.pop();
+                this.waitingList.push(topicData);
+                
+                // 待機列が上限を超えたら、最も古い話題を山札に戻す
+                if (this.waitingList.length > this.waitingLimit) {
+                    const recycledTopic = this.waitingList.shift();
+                    this.pool.unshift(recycledTopic); // 山札の底に戻す
+                }
+                
+                return topicData;
+            }
+
+            refillFromWaiting() {
+                console.log("%c⚠️ Topic Pool Refilled: 山札が空になったため待機列から補充しました。", "color: orange; font-weight: bold;");
+                this.pool = [...this.waitingList];
+                this.waitingList = [];
+                this.shuffle(this.pool);
+            }
+
+            /**
+             * デバッグ用のステータスレポートを取得
+             */
+            getDebugStatus() {
+                return {
+                    remaining: this.pool.length,     // 山札の残り
+                    waiting: this.waitingList.length, // リサイクル待機中（禁句期間）
+                    total: this.pool.length + this.waitingList.length
+                };
             }
         }
 
@@ -1071,11 +1242,35 @@
                 this.id = id;
                 this.bounds = bounds;
                 this.color = CONFIG.groupColors[id];
+
+                // 自分専用のトピックプールを作成
+                this.topicPool = new TopicPool(NEWSGROUP_TOPICS, 20);
+
+                this.gridCols = 5;
+                this.gridRows = 4;
+
                 this.members = [];
                 this.topics = [];
                 this.currentTopicIndex = 0;
                 this.lastLeftOutCheck = 0;
                 this.halted = false;  // グループ停止フラグ
+
+                // 2. このグループ専用の20個の話題をプールから「予約」する
+                let groupInitialData = [];
+                for (let i = 0; i < (this.gridCols * this.gridRows); i++) {
+                    groupInitialData.push(this.topicPool.drawTopic());
+                }
+
+                //  3. 話題の配置を計算
+                let arranged = arrangeTopicsByProjection(groupInitialData, this.gridCols, this.gridRows);
+                
+                // 4. 計算された配置に基づいて Topic インスタンスを作成
+                for (let i = 0; i < arranged.length; i++) {
+                    let a = arranged[i];
+                    // arranged[i].topic にはプールから引いた個別の話題データが入っている
+                    let t = new Topic(i, a.gridX, a.gridY, a.topic);
+                    this.topics.push(t);
+                }
 
                 // --- ファシリテーター管理プロパティの初期化 ---
                 this.facilitatorActive = false; // 介入モードフラグ [cite: 280, 439]
@@ -1099,25 +1294,9 @@
                 this.currentLeader = null; // 現在のリーダーを保持するプロパティ
                 this.targetTopic = null;            // リーダーの目標トピック
                 
-                // グリッドサイズ（トピック配置用）
-                if (singleGroupMode) {
-                    this.gridCols = 5;
-                    this.gridRows = 4;
-                } else {
-                    this.gridCols = 5;
-                    this.gridRows = 4;
-                }
-                
                 // 興味履歴（グラフ表示用）
                 this.interestHistory = [];
                 this.topicHistory = [];
-                
-                // トピックを類似度に基づいて配置
-                let arranged = arrangeTopicsByProjection(NEWSGROUP_TOPICS, this.gridCols, this.gridRows);
-                for (let i = 0; i < arranged.length; i++) {
-                    let a = arranged[i];
-                    this.topics.push(new Topic(i, a.gridX, a.gridY, a.topic));
-                }
                 
                 // メンバーを中央付近にランダム配置
                 let centerX = bounds.x + bounds.w / 2;
@@ -1284,14 +1463,28 @@
                 return count > 0 ? sum / count : 0;
             }
             
-            /** アクティブメンバー数を取得 */
+            /** 
+             * アクティブメンバー数を取得 
+             * ファシリテーターは除外
+             * */
+
             getActiveCount() { 
-                return this.members.filter(m => !m.leftOut).length; 
+                return this.members.filter(m => !m.leftOut && !m.isFacilitator).length; 
+            }
+
+            getRiskCount() { 
+                return this.members.filter(m => (m.riskLevel === MEMBER_STATE.RISK) && !m.isFacilitator).length; 
+            }
+
+            getCriticalCount() { 
+                return this.members.filter(m => (m.riskLevel === MEMBER_STATE.CRITICAL) && !m.isFacilitator).length; 
             }
             
-            /** 離脱メンバー数を取得 */
+            /** 離脱メンバー数を取得 
+             * ファシリテーターは除外
+            */
             getLeftOutCount() { 
-                return this.members.filter(m => m.leftOut).length; 
+                return this.members.filter(m => m.leftOut && !m.isFacilitator).length; 
             }
             
             /**
@@ -1345,8 +1538,22 @@
                 // 【自動化の追加】
                 const EXPERIMENT_LIMIT = 18000; // 5分間で自動停止
                 if (frameCount === EXPERIMENT_LIMIT) {
+                    const status = topicPool.getDebugStatus();
+
+                    console.log("--- TopicPool Debug Report ---");
+                    console.log(`山札の残り話題数: ${status.remaining}`);
+                    console.log(`待機列（禁句中）: ${status.waiting}`);
+                    console.log(`ストック総計: ${status.total}`);
+
                     console.log(`Group ${this.id}: 実験終了。データを出力します。`);
-                    logger.downloadCSV(this.id);
+
+                    // 全グループ（0, 1, 2, 3）のログを個別に保存
+                    logger.downloadAllGroupsCSV([0, 1, 2, 3]);
+
+                    // TopicPoolの状態もデバッグ出力
+                    groups.forEach(g => {
+                        console.log(`Group ${g.id} TopicPool:`, g.topicPool.getDebugStatus());
+                    });
                     this.halted = true; // グループを停止
                     noLoop(); // p5.jsの描画ループを停止
                     alert("シミュレーションが終了し、CSVを出力しました。");
@@ -1380,6 +1587,16 @@
                     } else {
                         this.stableFrames = 0;
                     }
+                }
+
+                // --- 修正箇所: 停止判定 ---
+                // アクティブな一般メンバーが2人以下（0, 1, 2人）になったら停止
+                if (this.getActiveCount() <= 2) {
+                    this.halted = true;
+                    console.log(`%c[STOP] Group ${this.id}: アクティブメンバーが2人以下になったため議論を終了します。`, "color: red;");
+                    
+                    // 終了時にその時点のログを書き出す（オプション）
+                    logger.downloadGroupCSV(this.id); 
                 }
             }
 
@@ -1587,11 +1804,24 @@
                 let col = constrain(Math.floor((this.centroid.x - b.x) / tileW), 0, this.gridCols - 1);
                 let row = constrain(Math.floor((this.centroid.y - b.y) / tileH), 0, this.gridRows - 1);
                 
-                let newTopic = this.topics.find(t => t.gridX === col && t.gridY === row);
-                
+                let newTopic = this.topics.find(t => t.gridX === col && t.gridY === row);        
+
                 // トピックが変わった場合
                 if (newTopic && newTopic.id !== this.currentTopicIndex) {
-                    logger.recordEvent('TOPIC_CHANGE', { from: this.currentTopicIndex, to: newTopic.id });
+                    let oldTile = this.topics.find(t => t.id === this.currentTopicIndex);
+            
+                    // 一度でも誰かが滞在した（visitCount > 0）なら、中身を新調する
+                    if (oldTile && oldTile.visitCount > 0) {
+                        const newData = this.topicPool.drawTopic();
+                        oldTile.setData(newData); 
+                        console.log(`Tile ${oldTile.id} refreshed with: ${newData.name}`);
+                    }
+
+                    logger.recordEvent('TOPIC_CHANGE', { 
+                            fromId: this.currentTopicIndex,
+                            toName: newTopic.name, // ここで「中身」を記録！
+                            isRefreshed: newTopic.justRefreshed // 入れ替わった直後かどうかのフラグ
+                        });
 
                     // 直前のトピックを記録（戻り防止用）
                     this.previousTopicId = this.currentTopicIndex;
@@ -1813,17 +2043,21 @@
             /** 毎フレームのスナップショットを記録 */
             logFrame(group) {
                 const activeMembers = group.members.filter(m => !m.isFacilitator);
+                const currentTopic = group.getCurrentTopic ? group.getCurrentTopic() : null;
                 const interests = activeMembers.map(m => m.currentInterest);
                 const velocities = activeMembers.map(m => m.currentVelocity);
 
                 const snapshot = {
                     frame: frameCount,
-                    groupId: group.id, // ここにGroupIDを挿入
+                    groupId: group.id,
+                    topicName: currentTopic ? currentTopic.name : "none",
+                    ...(currentTopic ? this.serializeTopicVector(currentTopic.vector) : {}),
                     facilitatorActive: group.facilitatorActive ? 1 : 0,
-                    currentTopicId: group.currentTopicIndex, // トピック多様性分析用
                     groupVelocity: group.getGroupVelocity(),
-                    atRiskCount: group.members.filter(m => m.riskLevel === MEMBER_STATE.RISK).length,
-                    criticalCount: group.members.filter(m => m.riskLevel === MEMBER_STATE.CRITICAL).length,
+                    activeCount: group.getActiveCount(),
+                    atRiskCount: group.getRiskCount(),
+                    criticalCount: group.getCriticalCount(),
+                    leftOutCount: group.getLeftOutCount(),
                     interestMean: interests.reduce((a, b) => a + b, 0) / interests.length,
                     interestSD: this.calculateSD(interests),
                     // 個別データのフラット化（CSV出力時に列を分けるため）
@@ -1865,41 +2099,73 @@
             }
 
             /**
-             * 蓄積データをCSVとしてダウンロード出力する
+             * トピックベクトルをCSV列用に展開する
              */
-            downloadCSV(groupLabel = "all") {
-                if (this.timeline.length === 0) {
-                    alert("保存するデータがありません。");
+            serializeTopicVector(vector) {
+                let vData = {};
+                if (!vector) return this.getEmptyTopicVector();
+                vector.forEach((val, i) => {
+                    vData[`topic_v${i}`] = val.toFixed(4);
+                });
+                return vData;
+            }
+
+            /**
+             * 指定したグループのデータのみを抽出してCSVとしてダウンロード
+             * @param {number} groupId - ダウンロードしたいグループのID
+             */
+            downloadGroupCSV(groupId) {
+                // 1. そのグループのデータのみをフィルタリング
+                const groupData = this.timeline.filter(row => row.groupId === groupId);
+                
+                if (groupData.length === 0) {
+                    console.warn(`Group ${groupId} のデータが存在しません。`);
                     return;
                 }
 
-                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-                const fileName = `group-${groupLabel}_sim_data_${timestamp}.csv`;
-
-                // ヘッダーの生成
-                const firstEntry = this.timeline[0];
-                const headers = Object.keys(firstEntry);
-                
-                // CSV行の作成
+                // 2. ヘッダーの作成（最初のデータからキーを取得）
+                const headers = Object.keys(groupData[0]);
                 const csvRows = [headers.join(',')];
-                
-                for (const row of this.timeline) {
+
+                // 3. データ行の作成
+                for (const row of groupData) {
                     const values = headers.map(header => {
                         const val = row[header];
-                        // カンマを含む可能性があるデータ（座標など）はダブルクォートで囲む
-                        return `"${val}"`;
+                        return typeof val === 'string' ? `"${val}"` : val;
                     });
                     csvRows.push(values.join(','));
                 }
 
-                // Blobの作成とダウンロード
-                const csvString = csvRows.join('\n');
-                const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-                const url = URL.createObjectURL(blob);
+                // 4. ファイル名の生成
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+                const filename = `group_${groupId}_log_${timestamp}.csv`;
+
+                // 5. ダウンロード実行
+                this.saveCSV(csvRows.join('\n'), filename);
+            }
+
+            /**
+             * 全グループのCSVを個別にダウンロードする
+             * @param {number[]} groupIds - グループIDの配列（例: [0, 1, 2, 3]）
+             */
+            downloadAllGroupsCSV(groupIds) {
+                groupIds.forEach(id => {
+                    this.downloadGroupCSV(id);
+                });
                 
+                // 別途、全グループ共通のイベントログ（TOPIC_CHANGEなど）も出力
+                this.downloadEventLog();
+            }
+
+            /**
+             * ブラウザのダウンロード機能を発火させる補助関数
+             */
+            saveCSV(csvContent, filename) {
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
                 const link = document.createElement("a");
+                const url = URL.createObjectURL(blob);
                 link.setAttribute("href", url);
-                link.setAttribute("download", fileName);
+                link.setAttribute("download", filename);
                 link.style.visibility = 'hidden';
                 document.body.appendChild(link);
                 link.click();
