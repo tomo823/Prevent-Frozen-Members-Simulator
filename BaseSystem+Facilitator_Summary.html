@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ファシリテーター駆動型介入システム - 概念設計</title>
+    <style>
+        :root {
+            --bg-dark: #0a0e17;
+            --bg-card: #1a2233;
+            --bg-code: #0d1117;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-yellow: #d29922;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+            --accent-orange: #f0883e;
+            --border-color: #30363d;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 20px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 { font-size: 1.8rem; color: var(--accent-blue); border-bottom: 2px solid var(--accent-blue); padding-bottom: 10px; margin: 30px 0 20px 0; }
+        h2 { font-size: 1.4rem; color: var(--accent-green); margin: 40px 0 15px 0; padding-left: 10px; border-left: 4px solid var(--accent-green); }
+        h3 { font-size: 1.1rem; color: var(--accent-yellow); margin: 25px 0 10px 0; }
+        p { margin: 10px 0; }
+        .header { text-align: center; padding: 30px 0; border-bottom: 1px solid var(--border-color); margin-bottom: 30px; }
+        .header h1 { border: none; font-size: 2rem; }
+        .toc { background: var(--bg-card); padding: 20px 30px; border-radius: 8px; margin: 20px 0; }
+        .toc ol { padding-left: 20px; }
+        .toc li { margin: 8px 0; }
+        .toc a { color: var(--accent-blue); text-decoration: none; }
+        .diagram { background: var(--bg-code); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; margin: 15px 0; font-family: monospace; font-size: 0.85rem; line-height: 1.5; overflow-x: auto; white-space: pre; }
+        code { background: var(--bg-code); padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.9em; }
+        pre { background: var(--bg-code); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; margin: 15px 0; overflow-x: auto; font-size: 0.85rem; }
+        pre code { background: none; padding: 0; }
+        table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 0.9rem; }
+        th, td { border: 1px solid var(--border-color); padding: 10px 15px; text-align: left; }
+        th { background: var(--bg-card); color: var(--accent-blue); }
+        .warning { background: linear-gradient(135deg, #2a2010, #2a1a10); border-left: 4px solid var(--accent-red); padding: 15px 20px; margin: 15px 0; border-radius: 0 8px 8px 0; }
+        .warning-title { color: var(--accent-red); font-weight: bold; margin-bottom: 5px; }
+        .insight { background: linear-gradient(135deg, #1a2a20, #162a1e); border-left: 4px solid var(--accent-green); padding: 15px 20px; margin: 15px 0; border-radius: 0 8px 8px 0; }
+        .insight-title { color: var(--accent-green); font-weight: bold; margin-bottom: 5px; }
+        .theory { background: linear-gradient(135deg, #162030, #1a2744); border-left: 4px solid var(--accent-purple); padding: 15px 20px; margin: 15px 0; border-radius: 0 8px 8px 0; }
+        .theory-title { color: var(--accent-purple); font-weight: bold; margin-bottom: 5px; }
+        .highlight-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; margin: 20px 0; }
+        .comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 15px 0; }
+        .comparison > div { background: var(--bg-card); padding: 15px; border-radius: 8px; }
+        .comparison h4 { color: var(--accent-green); margin-bottom: 10px; }
+        .tag { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.8rem; margin: 2px; }
+        .tag-facilitator { background: #a371f733; color: #a371f7; border: 1px solid #a371f7; }
+        .tag-member { background: #58a6ff33; color: #58a6ff; border: 1px solid #58a6ff; }
+        .tag-risk { background: #d2992233; color: #d29922; border: 1px solid #d29922; }
+        footer { margin-top: 50px; padding-top: 20px; border-top: 1px solid var(--border-color); text-align: center; color: var(--text-secondary); font-size: 0.85rem; }
+        @media (max-width: 600px) { .comparison { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>🎯 ファシリテーター駆動型<br>介入システム</h1>
+    <p style="color: var(--text-secondary); margin-top: 15px;">概念設計ノート｜作成日: 2026年1月21日</p>
+</div>
+
+<div class="toc">
+    <h3 style="color: var(--text-primary); margin-bottom: 15px;">📑 目次</h3>
+    <ol>
+        <li><a href="#sec1">現行システムの問題点</a></li>
+        <li><a href="#sec2">早期検出：多段階警告システム</a></li>
+        <li><a href="#sec3">ファシリテーターの役割</a></li>
+        <li><a href="#sec4">バランスの取れたトピック選択アルゴリズム</a></li>
+        <li><a href="#sec5">実装アーキテクチャ</a></li>
+        <li><a href="#sec6">重要な設計判断</a></li>
+        <li><a href="#sec7">理論的背景との接続</a></li>
+        <li><a href="#sec8">評価指標と潜在的課題</a></li>
+        <li><a href="#sec9">まとめと次のステップ</a></li>
+    </ol>
+</div>
+
+<h1 id="sec1">1. 現行システムの問題点</h1>
+
+<p>現在のシステムにおける離脱検出の流れを見てみましょう：</p>
+
+<div class="diagram">                                          手遅れ！
+興味低下 → 速度低下 → v_i_lb > v₀ → 凍結 ❄️
+                                    ↑
+                          検出はここで発生
+                          （ダメージは既に発生済み）</div>
+
+<div class="warning">
+    <div class="warning-title">⚠️ 問題点</div>
+    <p>現在の検出は<strong>受動的（reactive）</strong>であり、<strong>能動的（proactive）</strong>ではありません。離脱メンバーを検出した時点で、彼らは既に議論から離脱しています。</p>
+</div>
+
+<h1 id="sec2">2. 早期検出：多段階警告システム</h1>
+
+<p>二値的な検出ではなく、<strong>グラデーション警告システム</strong>を実装します：</p>
+
+<div class="diagram">興味レベル
+    ▲
+    │  ████████████  エンゲージ中 (緑)
+    │  ████████████
+    │  ────────────  threshold_safe（安全閾値）
+    │  ▓▓▓▓▓▓▓▓▓▓▓▓  リスク状態 (黄)     ← ファシリテーターが監視
+    │  ▓▓▓▓▓▓▓▓▓▓▓▓
+    │  ────────────  threshold_critical（危険閾値）
+    │  ░░░░░░░░░░░░  危機状態 (橙)       ← ファシリテーターが介入
+    │  ░░░░░░░░░░░░
+    │  ────────────  threshold_leftout (v₀)（離脱閾値）
+    │   xxxxxxxxxxxx  離脱済み (赤)       ← 現在の検出ポイント
+    ▼</div>
+
+<h3>2.1 3つの相補的な検出手法</h3>
+
+<table>
+    <tr><th>手法</th><th>追跡対象</th><th>早期警告シグナル</th></tr>
+    <tr><td><strong>速度トレンド</strong></td><td>N フレームにわたる d(v_i)/dt</td><td>負の傾き = エンゲージメント低下中</td></tr>
+    <tr><td><strong>空間的ドリフト</strong></td><td>重心からの距離</td><td>距離増加 = グループから離れつつある</td></tr>
+    <tr><td><strong>興味予測</strong></td><td>目標トピック到達時の予測興味値</td><td>予測 u_in < threshold</td></tr>
+</table>
+
+<div class="insight">
+    <div class="insight-title">💡 重要な洞察</div>
+    <p><strong>位置だけでなく、軌跡を検出する。</strong>これにより、メンバーが実際に離脱する前に介入が可能になります。</p>
+</div>
+
+<h1 id="sec3">3. ファシリテーターの役割</h1>
+
+<h3>3.1 ファシリテーターとは誰か？</h3>
+
+<p><strong>特別なオブザーバーメンバーとしてのファシリテーター</strong>を採用します：</p>
+
+<div class="comparison">
+    <div>
+        <h4><span class="tag tag-member">○ 通常のメンバー</span></h4>
+        <ul style="margin-left: 20px;">
+            <li>個人的な興味ベクトル W_i を持つ（多様）</li>
+            <li>議論に参加する</li>
+            <li>最も興味が高い場合、リーダーになれる</li>
+        </ul>
+    </div>
+    <div>
+        <h4><span class="tag tag-facilitator">◆ ファシリテーター</span></h4>
+        <ul style="margin-left: 20px;">
+            <li>バランスの取れた興味ベクトル<br>W_f ≈ [0.5, 0.5, 0.5, 0.5, 0.5, 0.5]</li>
+            <li>観察者として振る舞い、積極的には参加しない</li>
+            <li>介入が必要な時に舵取りを引き継ぐ</li>
+            <li><strong>目標：個人の興味ではなく、グループの福祉</strong></li>
+        </ul>
+    </div>
+</div>
+
+<div class="insight">
+    <div class="insight-title">💡 この設計を推奨する理由</div>
+    <ol style="margin-left: 20px;">
+        <li><strong>現実性</strong>：実際のファシリテーションを反映している</li>
+        <li><strong>追跡可能性</strong>：シミュレーション内で視覚的に追跡できる</li>
+        <li><strong>研究対象</strong>：創発的役割として研究できる</li>
+    </ol>
+</div>
+
+<h3>3.2 ファシリテーターの行動モード</h3>
+
+<div class="diagram">┌─────────────────────────────────────────────────────────────┐
+│                  ファシリテーターの状態                      │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  休眠状態（オブザーバーモード）                             │
+│  ─────────────────────────────                              │
+│  • グループに受動的についていく                             │
+│  • 全メンバーの興味レベルを監視                             │
+│  • グループの健康度指標を計算                               │
+│  • 舵取りへの影響なし                                       │
+│                                                             │
+│         │                                                   │
+│         │ トリガー: atRiskCount > 0                        │
+│         │          または variance > threshold              │
+│         ▼                                                   │
+│                                                             │
+│  活性状態（介入モード）                                     │
+│  ────────────────────                                       │
+│  • 実質的なリーダーとして引き継ぐ                          │
+│  • バランスの取れたトピックへ舵取り（個人の興味ではない）  │
+│  • 自然なリーダーの舵取りを抑制                            │
+│  • グループが安定するまで継続                              │
+│                                                             │
+│         │                                                   │
+│         │ 解除条件: variance < threshold                    │
+│         │          かつ リスク状態のメンバーなし            │
+│         │          が N フレーム連続（ヒステリシス）        │
+│         ▼                                                   │
+│                                                             │
+│  休眠状態（オブザーバーに戻る）                             │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘</div>
+
+<h1 id="sec4">4. バランスの取れたトピック選択アルゴリズム</h1>
+
+<p>これが<strong>中核となる革新点</strong>です。ファシリテーターは個人の興味ではなく、<strong>グループの公平性</strong>を最適化します。</p>
+
+<h3>4.1 現在のリーダーの選択方式（自己利益型）</h3>
+
+<pre><code>score = leaderInterest × (1 - heat) × (1 - visitPenalty) + noveltyBonus</code></pre>
+
+<div class="warning">
+    <div class="warning-title">⚠️ 問題点</div>
+    <p>一人の興味のみを最適化している。</p>
+</div>
+
+<h3>4.2 ファシリテーターの選択方式（グループ福祉型）</h3>
+
+<div class="theory">
+    <div class="theory-title">📚 アプローチ：ロールズ的公正 + 分散最小化</div>
+</div>
+
+<pre><code>function calculateBalancedScore(group, candidateTopic) {
+    // このトピックに対する全メンバーの興味を計算
+    let interests = group.activeMembers.map(m => 
+        m.calculateInterest(candidateTopic)
+    );
+    
+    // ロールズ的：最小値を最大化（最も不利な人を助ける）
+    let minInterest = Math.min(...interests);
+    
+    // 功利主義的平等：分散を最小化
+    let variance = calculateVariance(interests);
+    
+    // 結合スコア
+    let balanceScore = minInterest × (1 - variance × λ);
+    
+    // 繰り返しを避けるため、熱も考慮
+    let finalScore = balanceScore × (1 - heat × 0.5);
+    
+    return finalScore;
+}</code></pre>
+
+<h3>4.3 なぜこれが機能するのか</h3>
+
+<table>
+    <tr><th>指標</th><th>目的</th><th>効果</th></tr>
+    <tr><td><code>min(interests)</code></td><td>ロールズ的正義</td><td>誰かを置き去りにするトピックは選ばない</td></tr>
+    <tr><td><code>1 - variance</code></td><td>平等性</td><td>一部が愛し一部が嫌うトピックよりも、全員が適度に好むトピックを優先</td></tr>
+    <tr><td><code>λ</code>（ラムダ）</td><td>チューニングパラメータ</td><td>最小最大と分散のバランス調整</td></tr>
+</table>
+
+<h3>4.4 視覚的比較</h3>
+
+<div class="diagram">トピック A: 高分散（ファシリテーターにとって悪い）
+メンバー 1: ████████████ 0.9
+メンバー 2: ████████░░░░ 0.7
+メンバー 3: ██░░░░░░░░░░ 0.2  ← この人が置き去りに！
+メンバー 4: █████████░░░ 0.8
+分散: 高, 最小値: 低 → スコア: 低
+
+トピック B: 低分散（ファシリテーターにとって良い）
+メンバー 1: ██████░░░░░░ 0.5
+メンバー 2: █████░░░░░░░ 0.5
+メンバー 3: ██████░░░░░░ 0.6  ← 全員がエンゲージ継続
+メンバー 4: █████░░░░░░░ 0.5
+分散: 低, 最小値: 中程度 → スコア: 高 ✓</div>
+
+<h1 id="sec5">5. 実装アーキテクチャ</h1>
+
+<div class="diagram">┌─────────────────────────────────────────────────────────────┐
+│                    グループ更新ループ                        │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+                 ┌────────────────────────┐
+                 │  グループ健康度を計算   │
+                 │  • atRiskMembers[]     │
+                 │  • interestVariance    │
+                 │  • predictedLeftOuts   │
+                 └────────────────────────┘
+                              │
+                              ▼
+                    ┌─────────────────┐
+                    │ 介入が          │
+              ┌─NO──│ 必要？          │──YES─┐
+              │     └─────────────────┘      │
+              │                              │
+              ▼                              ▼
+    ┌─────────────────┐          ┌─────────────────────┐
+    │ 自然なリーダー   │          │ ファシリテーター    │
+    │ による舵取り     │          │ による舵取り        │
+    │ （現在の実装）   │          │ （バランストピック）│
+    └─────────────────┘          └─────────────────────┘
+              │                              │
+              └──────────┬───────────────────┘
+                         │
+                         ▼
+              ┌─────────────────────┐
+              │ 通常の Boids +      │
+              │ メンバー更新        │
+              └─────────────────────┘</div>
+
+<h1 id="sec6">6. 重要な設計判断</h1>
+
+<h3>6.1 介入トリガーの閾値</h3>
+
+<pre><code>// オプション A: カウントベース
+if (atRiskMembers.length >= 1) activate();
+
+// オプション B: 比率ベース
+if (atRiskMembers.length / totalMembers > 0.2) activate();
+
+// オプション C: 重症度加重
+let riskScore = atRiskMembers.reduce((sum, m) => 
+    sum + (threshold_safe - m.interest), 0);
+if (riskScore > threshold) activate();</code></pre>
+
+<h3>6.2 ヒステリシス（振動の防止）</h3>
+
+<pre><code>// 問題: ファシリテーターON → 状況改善 → OFF → 悪化 → ON...
+
+// 解決策: 持続的な改善を要求
+let stableFrames = 0;
+const STABILITY_REQUIRED = 60;
+
+if (facilitatorActive) {
+    if (groupIsHealthy()) {
+        stableFrames++;
+        if (stableFrames >= STABILITY_REQUIRED) {
+            deactivateFacilitator();
+            stableFrames = 0;
+        }
+    } else {
+        stableFrames = 0; // カウンターをリセット
+    }
+}</code></pre>
+
+<h3>6.3 ファシリテーターの空間的位置</h3>
+
+<table>
+    <tr><th>オプション</th><th>説明</th><th>メリット</th></tr>
+    <tr><td>重心に配置</td><td>常にグループの中央</td><td>「中立」な位置を表す</td></tr>
+    <tr><td>グループの後ろ</td><td>羊飼いのように見守る</td><td>誰がドリフトしているか見える</td></tr>
+    <tr><td>リスクメンバーの近く</td><td>苦戦しているメンバーに接近</td><td>誰が助けを必要としているかの視覚的指標</td></tr>
+</table>
+
+<h1 id="sec7">7. 理論的背景との接続</h1>
+
+<div class="theory">
+    <div class="theory-title">📚 確立された研究との関連</div>
+</div>
+
+<table>
+    <tr><th>概念</th><th>分野</th><th>ここでの応用</th></tr>
+    <tr><td><strong>ロールズ的正義</strong></td><td>哲学</td><td>最小興味を最大化（無知のヴェール）</td></tr>
+    <tr><td><strong>パレート効率性</strong></td><td>経済学</td><td>介入は他を害することなく最も不利な人を改善</td></tr>
+    <tr><td><strong>分散型リーダーシップ</strong></td><td>経営学</td><td>文脈/専門性に基づいてリーダーシップが移行</td></tr>
+    <tr><td><strong>適応的ファシリテーション</strong></td><td>教育学</td><td>参加者のエンゲージメントに基づいてモデレーターが調整</td></tr>
+    <tr><td><strong>ホメオスタシス</strong></td><td>生物学</td><td>システムがバランスを維持するために自己調節</td></tr>
+</table>
+
+<h1 id="sec8">8. 評価指標と潜在的課題</h1>
+
+<h3>8.1 評価指標</h3>
+
+<table>
+    <tr><th>指標</th><th>測定方法</th><th>目標</th></tr>
+    <tr><td>凍結メンバー数</td><td><code>leftOut = true</code> のカウント</td><td>最小化（理想的には0）</td></tr>
+    <tr><td>介入までの時間</td><td>最初の「リスク状態」からファシリテーター起動までのフレーム数</td><td>最小化</td></tr>
+    <tr><td>興味分散の時間変化</td><td>シミュレーション全体での std(interests)</td><td>閾値以下を維持</td></tr>
+    <tr><td>トピック多様性</td><td>訪問したユニークなトピック数</td><td>維持</td></tr>
+    <tr><td>回復率</td><td>リスク状態から回復したメンバー</td><td>最大化</td></tr>
+</table>
+
+<h3>8.2 潜在的課題</h3>
+
+<table>
+    <tr><th>課題</th><th>説明</th><th>可能な解決策</th></tr>
+    <tr><td>良いトピックが存在しない</td><td>全ての隣接トピックが高分散</td><td>現在のトピックで「待機」、または「中立的議論」トピックを作成</td></tr>
+    <tr><td>ファシリテーターの支配</td><td>常にアクティブで自然なダイナミクスが抑制</td><td>閾値の調整、「ファシリテーターの疲労」を追加</td></tr>
+    <tr><td>目標の衝突</td><td>最小興味 vs 低分散が衝突</td><td>λパラメータの重み付け、パレートフロンティアを使用</td></tr>
+    <tr><td>計算コスト</td><td>全メンバー × 全トピックをチェック</td><td>計算をキャッシュ、トピック変更時のみ再計算</td></tr>
+</table>
+
+<h1 id="sec9">9. まとめと次のステップ</h1>
+
+<h3>9.1 重要な原則</h3>
+
+<div class="highlight-box">
+    <ol style="margin-left: 20px;">
+        <li><strong>早期検出</strong>：閾値だけでなく、トレンドと予測を使用</li>
+        <li><strong>最小限の介入</strong>：必要な時だけファシリテーターが活動、安定したら解除</li>
+        <li><strong>公平性の最適化</strong>：ロールズ的最小最大 + 分散最小化</li>
+        <li><strong>ヒステリシス</strong>：安定性要件で振動を防止</li>
+        <li><strong>視覚的フィードバック</strong>：介入を可視化し、理解可能にする</li>
+    </ol>
+</div>
+
+<h3>9.2 現行システムとの比較</h3>
+
+<div class="comparison">
+    <div>
+        <h4>現行システム</h4>
+        <ul style="margin-left: 20px;">
+            <li>検出タイミング: 離脱後（事後的）</li>
+            <li>介入方法: なし（検出のみ）</li>
+            <li>メンバーの運命: 凍結（復帰なし）</li>
+        </ul>
+    </div>
+    <div>
+        <h4>提案システム（拡張後）</h4>
+        <ul style="margin-left: 20px;">
+            <li>検出タイミング: リスク状態（予防的）</li>
+            <li>介入方法: ファシリテーターによるバランストピック選択</li>
+            <li>メンバーの運命: 回復可能（グループに再統合）</li>
+        </ul>
+    </div>
+</div>
+
+<h3>9.3 実装への次のステップ</h3>
+
+<div class="highlight-box">
+    <p><strong>1. Member クラスの拡張</strong></p>
+    <ul style="margin-left: 20px;">
+        <li><code>isFacilitator</code> フラグの追加</li>
+        <li>バランスの取れた興味ベクトルの初期化</li>
+    </ul>
+    
+    <p style="margin-top: 15px;"><strong>2. Group クラスの拡張</strong></p>
+    <ul style="margin-left: 20px;">
+        <li><code>calculateGroupHealth()</code> メソッドの追加</li>
+        <li><code>facilitatorActive</code> 状態の管理</li>
+        <li><code>calculateBalancedScore()</code> の実装</li>
+    </ul>
+    
+    <p style="margin-top: 15px;"><strong>3. 視覚的フィードバック</strong></p>
+    <ul style="margin-left: 20px;">
+        <li>ファシリテーターの特別な表示（例：六角形、異なる色）</li>
+        <li>介入モード時の視覚的インジケーター</li>
+        <li>リスク状態メンバーのハイライト</li>
+    </ul>
+    
+    <p style="margin-top: 15px;"><strong>4. UIコントロール</strong></p>
+    <ul style="margin-left: 20px;">
+        <li>ファシリテーター機能のON/OFFトグル</li>
+        <li>閾値の調整スライダー</li>
+        <li>介入履歴のログ表示</li>
+    </ul>
+</div>
+
+<div class="insight">
+    <div class="insight-title">💡 研究への貢献</div>
+    <p>この機能は、<strong>受動的な検出</strong>から<strong>能動的な介入</strong>への移行を実現するため、研究への重要な貢献となります。これは、教育現場やビジネス環境における実際のファシリテーションの仕組みにより近いアプローチです。</p>
+</div>
+
+<footer>
+    <p>このドキュメントは、オンライン議論グループにおけるファシリテーター駆動型介入システムの概念設計を説明しています。</p>
+    <p style="margin-top: 10px;">研究・教育目的で作成されました。</p>
+</footer>
+
+</body>
+</html>

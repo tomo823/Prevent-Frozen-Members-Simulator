@@ -287,7 +287,8 @@
                 '#54a0ff', '#ff9f43', '#a55eea', '#26de81', '#fd79a8'
             ],
             
-            minActiveMembers: 3     // グループ停止条件：アクティブメンバーがこの数未満で停止
+            minActiveMembers: 3,  // グループ停止条件：アクティブメンバーがこの数未満で停止
+            logInterval: 15, // 30フレーム(0.5秒)ごとに記録
         };
 
         // 話者の状態定義
@@ -443,7 +444,7 @@
         
         // 離脱検出パラメータ
         let leftOutThreshold = 1.0;         // 離脱判定閾値 v₀（式7で使用）
-        let leftOutCheckFrequency = 45;     // 離脱チェック頻度（フレーム数）
+        let leftOutCheckFrequency = 15;     // 離脱チェック頻度（フレーム数）
         
         // 探索パラメータ
         let heatDecayRate = 0.004;          // ヒート減衰率（遅くして循環防止）
@@ -1533,12 +1534,14 @@
                 
                 this.calculateCentroid();
                 this.updateCurrentTopic();
-                logger.logFrame(this);
+                if (frameCount % CONFIG.logInterval === 0) {
+                    logger.logFrame(this);
+                }
 
                 // 【自動化の追加】
                 const EXPERIMENT_LIMIT = 18000; // 5分間で自動停止
                 if (frameCount === EXPERIMENT_LIMIT) {
-                    const status = topicPool.getDebugStatus();
+                    const status = this.topicPool.getDebugStatus();
 
                     console.log("--- TopicPool Debug Report ---");
                     console.log(`山札の残り話題数: ${status.remaining}`);
