@@ -264,7 +264,7 @@
         // シミュレーションの基本パラメータを定義
         // ============================================
         const CONFIG = {
-            groupSize: 10,          // 各グループのメンバー数
+            groupSize: 4,          // 各グループのメンバー数
             numGroups: 4,           // グループ数（4グループモード時）
             numDimensions: 6,       // トピックの次元数（K次元ベクトル）
             
@@ -443,7 +443,7 @@
         const interestPullBase = 0.5;       // 興味引力の基本値
         
         // 離脱検出パラメータ
-        let leftOutThreshold = 1.0;         // 離脱判定閾値 v₀（式7で使用）
+        let leftOutThreshold = 2;         // 離脱判定閾値 v₀（式7で使用）
         let leftOutCheckFrequency = 15;     // 離脱チェック頻度（フレーム数）
         
         // 探索パラメータ
@@ -1282,7 +1282,7 @@
                 this.thresholds = {
                     safe: 0.5,
                     critical: 0.8,
-                    leftout: 1.0 // v0
+                    leftout: 2.5 // v0
                 };
                 
                 this.momentum = createVector(0, 0);
@@ -1444,8 +1444,10 @@
             updateMemberInterests() {
                 let topic = this.getCurrentTopic();
                 for (let m of this.members) { 
-                    m.calculateInterest(topic); 
-                    m.calculateVelocity(); 
+                    if (!m.leftOut) {
+                        m.calculateInterest(topic); 
+                        m.calculateVelocity(); 
+                    }
                 }
             }
             
@@ -1683,7 +1685,7 @@
                 let variance = interests.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / interests.length;
 
                 // 結合スコア (lambda=0.5で調整) [cite: 311, 318]
-                let lambda = 0.5;
+                let lambda = 0.1;
                 let balanceScore = minInterest * (1 - variance * lambda);
 
                 // 熱（繰り返し防止）も考慮 [cite: 312-314]
