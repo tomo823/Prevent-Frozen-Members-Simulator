@@ -821,7 +821,7 @@
                 for (let k = 0; k < CONFIG.numDimensions; k++) {
                     dotProduct += this.latentInterests[k] * topic.vector[k];
                 }
-                this.currentInterest = dotProduct * CONFIG.maxInterest;
+                this.currentInterest = dotProduct;
                 return this.currentInterest;
             }
             
@@ -838,7 +838,7 @@
             
             /** 正規化された興味度（0-1）を取得 */
             getInterestNormalized() { 
-                return this.currentInterest / CONFIG.maxInterest; 
+                return this.currentInterest; 
             }
             
             /** 力を加える */
@@ -1013,7 +1013,7 @@
                 // 興味レベルの計算
                 // ============================================
                 let interestNorm = this.getInterestNormalized();
-                let adjustedInterest = Math.min(1, Math.max(0, interestNorm * interestSensitivity));
+                let adjustedInterest = Math.min(1, Math.max(0, interestNorm));
                 
                 // 現在のリーダーを取得
                 let leader = group.currentLeader;
@@ -1036,13 +1036,6 @@
                     // 目標トピックへの推進力(steeringForce)を最優先で適用
                     let push = steeringForce.copy().mult(this.maxForce * 3.5);
                     this.applyForce(push);
-                    
-                    // 2. リーダーの慣性（渡された steeringForce との一致度を見る）
-                    let dot = groupMomentum.dot(steeringForce);
-                    if (dot > 0) {
-                        let mom = steeringForce.copy().mult(dot * momentumWeight * this.maxForce * 0.5);
-                        this.applyForce(mom);
-                    }
 
                     // リーダーのBoids力を大幅に減衰（引っ張られ防止）
                     coh.mult(0.15);  // 結合力をほぼ無効化
@@ -1051,31 +1044,7 @@
                 } else if (!isLeader && leader) {
                     // ============================================
                     // フォロワーの行動
-                    // - リーダーの位置についていく
-                    // - リーダーの進行方向にも追従（重要！）
                     // ============================================
-                
-                    // A. リーダーの位置を追う (距離が離れるほど強くなる)
-                    let followPos = p5.Vector.sub(leader.pos, this.pos);
-                    if (followPos.mag() > 5) {
-                        followPos.normalize();
-                        // 興味が高いほどリーダーに密着し、低いほどルーズに追従
-                        let followStrength = 0.3 + adjustedInterest * 1.0;
-                        followPos.mult(this.maxForce * followStrength);
-                        this.applyForce(followPos);
-                    }
-
-                    // B. リーダーの向き(速度)に合わせる (背中を追う力)
-                    if (leader.vel.mag() > 0.1) {
-                        let followVel = leader.vel.copy().normalize();
-                        let alignStrength = 0.5 + adjustedInterest * 1.5;
-                        followVel.mult(this.maxForce * alignStrength);
-                        this.applyForce(followVel);
-                    }
-
-                    // C. フォロワーの慣性
-                    let mom = groupMomentum.copy().mult(momentumWeight * this.maxForce * (0.3 + adjustedInterest * 0.4));
-                    this.applyForce(mom);
 
                     // C. フォロワーのBoids力の調整 (興味度による重み付け)
                     let cohFactor = 0.1 + adjustedInterest * 0.7;
@@ -1084,14 +1053,6 @@
                     coh.mult(cohesionBase * cohFactor);
                     ali.mult(alignmentBase * aliFactor);
                     sep.mult(separationBase * sepFactor);
-                }
-                
-                // 【放浪力 Wander】リーダーはなし、フォロワーは興味低いほど強い
-                let wander = createVector(0, 0);
-                if (!isLeader) {
-                    let wanderStrength = (1 - adjustedInterest) * 0.05 * interestSensitivity;
-                    wander = p5.Vector.random2D().mult(wanderStrength);
-                    this.applyForce(wander);
                 }
                 
                 // ============================================
@@ -1281,8 +1242,8 @@
                 // 介入用閾値設定 [cite: 232-238]
                 this.thresholds = {
                     safe: 0.5,
-                    critical: 1.0,
-                    leftout: 1.8 // v0
+                    critical: 0.1,
+                    leftout: 0.5 // v0
                 };
                 
                 this.momentum = createVector(0, 0);
