@@ -440,7 +440,13 @@
         const cohesionBase = 2.0;           // 結合力の基本値
         const alignmentBase = 0.8;          // 整列力の基本値
         const separationBase = 1.0;         // 分離力の基本値
-        const interestPullBase = 0.5;       // 興味引力の基本値
+
+        // 論文で説明可能な「根拠のある定数」として定義
+        const BOIDS_WEIGHTS = {
+            COHESION:   { min: 0.1, max: 1.0 }, // 興味0でも最低限の繋がり、興味1で結束
+            ALIGNMENT:  { min: 0.2, max: 1.0 }, // 興味0でもなんとなく合わせる、興味1で完全同調
+            SEPARATION: { min: 0.3, max: 1.5 }  // 興味0で強い反発（離脱行動）、興味1で衝突回避のみ
+        };
         
         // 離脱検出パラメータ
         let leftOutThreshold = 2;         // 離脱判定閾値 v₀（式7で使用）
@@ -1046,10 +1052,11 @@
                     // フォロワーの行動
                     // ============================================
 
-                    // C. フォロワーのBoids力の調整 (興味度による重み付け)
-                    let cohFactor = 0.1 + adjustedInterest * 0.7;
-                    let aliFactor = 0.2 + adjustedInterest * 0.6;
-                    let sepFactor = 1.5 - adjustedInterest * 1.2;
+                    // フォロワーのBoids力の調整 (興味度による重み付け)
+                    let cohFactor = BOIDS_WEIGHTS.COHESION.min + (BOIDS_WEIGHTS.COHESION.max - BOIDS_WEIGHTS.COHESION.min) * adjustedInterest;
+                    let aliFactor = BOIDS_WEIGHTS.ALIGNMENT.min + (BOIDS_WEIGHTS.ALIGNMENT.max - BOIDS_WEIGHTS.ALIGNMENT.min) * adjustedInterest;
+                    let sepFactor = BOIDS_WEIGHTS.SEPARATION.max - (BOIDS_WEIGHTS.SEPARATION.max - BOIDS_WEIGHTS.SEPARATION.min) * adjustedInterest;
+
                     coh.mult(cohesionBase * cohFactor);
                     ali.mult(alignmentBase * aliFactor);
                     sep.mult(separationBase * sepFactor);
