@@ -1281,8 +1281,8 @@
                 // 介入用閾値設定 [cite: 232-238]
                 this.thresholds = {
                     safe: 0.5,
-                    critical: 0.8,
-                    leftout: 2.5 // v0
+                    critical: 1.0,
+                    leftout: 1.8 // v0
                 };
                 
                 this.momentum = createVector(0, 0);
@@ -1294,6 +1294,7 @@
                 this.settleThreshold = 60;          // 安定とみなすフレーム数
                 this.currentLeader = null; // 現在のリーダーを保持するプロパティ
                 this.targetTopic = null;            // リーダーの目標トピック
+                this.topicsVisitedCount = 1;
                 
                 // 興味履歴（グラフ表示用）
                 this.interestHistory = [];
@@ -1536,13 +1537,9 @@
                 
                 this.calculateCentroid();
                 this.updateCurrentTopic();
-                if (frameCount % CONFIG.logInterval === 0) {
-                    logger.logFrame(this);
-                }
 
                 // 【自動化の追加】
-                const EXPERIMENT_LIMIT = 18000; // 5分間で自動停止
-                if (frameCount === EXPERIMENT_LIMIT) {
+                if (this.topicsVisitedCount > 40) {
                     const status = this.topicPool.getDebugStatus();
 
                     console.log("--- TopicPool Debug Report ---");
@@ -1833,9 +1830,12 @@
                     
                     this.currentTopicIndex = newTopic.id;
                     newTopic.onEnter();
-                    totalTopicChanges++;
+                    this.topicsVisitedCount++;
                     this.updateMemberInterests();
                     this.recordInterestSnapshot();
+
+                    // ★修正ポイント：話題が変わった「この瞬間」だけ記録する
+                    logger.logFrame(this);
                     
                     // 安定カウンターをリセット
                     this.topicSettleFrames = 0;
