@@ -274,8 +274,8 @@
             // 各次元の表示色
             dimensionColors: ['#e74c3c', '#3498db', '#27ae60', '#9b59b6', '#f39c12', '#1abc9c'],
             
-            maxVelocity: 10,        // 最大速度 Vmax（式5で使用）
-            maxInterest: 10,        // 最大興味レベル Lmax（式5で使用）
+            maxVelocity: 1.0,        // 最大速度 Vmax（式5で使用）
+            maxInterest: 0.5,        // 最大興味レベル Lmax（式5で使用）
             
             // グループの表示色
             groupColors: ['#ff6b35', '#4ecdc4', '#95e86f', '#ffd93d'],
@@ -714,8 +714,8 @@
                 this.vel = createVector(0, 0);  // 速度 v_i
                 this.acc = createVector(0, 0);  // 加速度
                 
-                // 移動パラメータ（シングルグループモードでは大きくする）
-                this.maxSpeed = singleGroupMode ? 1.4 : 0.9;
+                // 移動パラメータ
+                this.maxSpeed = CONFIG.maxVelocity;
                 this.maxForce = singleGroupMode ? 0.07 : 0.05;
                 this.leftOut = false;  // 離脱フラグ
                 this.velocityHistory = []; // トレンド分析用
@@ -840,6 +840,15 @@
             calculateVelocity() {
                 this.currentVelocity = this.currentInterest * CONFIG.maxVelocity / CONFIG.maxInterest;
                 return this.currentVelocity;
+            }
+
+            /**
+             * 興味度の比率（0.0 ~ 1.0）を取得
+             * 心理的な「熱量」を無次元化する
+             */
+            getInterestRatio() {
+                // 0.0 ~ 1.0 の範囲に正規化
+                return constrain(this.currentInterest / CONFIG.maxInterest, 0, 1);
             }
             
             /** 正規化された興味度（0-1）を取得 */
@@ -1084,9 +1093,18 @@
                 this.vel.add(this.acc);
                 
                 // 速度を興味レベルに応じて制限
-                let speedMult = map(this.currentVelocity, 0, CONFIG.maxVelocity, 0.4, 1.0);
-                this.vel.limit(this.maxSpeed * speedMult);
-                
+                // 2. 心理的な充足率（Ratio）を算出
+                const ratio = this.getInterestRatio();
+
+                // 3. 充足率を速度倍率 (0.4 ~ 1.0) に線形変換
+                // y = 0.4 + 0.6 * x の形
+                const speedMult = 0.4 + (0.6 * ratio);
+
+                // 4. 物理的な速度制限（limit）を適用
+                // maxSpeed に対する「天井」を興味レベルで動的に変える
+                const currentMaxSpeed = this.maxSpeed * speedMult;
+                this.vel.limit(currentMaxSpeed);
+
                 this.pos.add(this.vel);
                 this.acc.mult(0);  // 加速度をリセット
             }
