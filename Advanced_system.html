@@ -437,7 +437,7 @@
         let interestSensitivity = 1.0;      // 興味が行動に与える影響の強さ
         
         // 基本パラメータ（固定値 - 興味で自動調整される）
-        const cohesionBase = 2.0;           // 結合力の基本値
+        const cohesionBase = 3.0;           // 結合力の基本値
         const alignmentBase = 0.8;          // 整列力の基本値
         const separationBase = 1.0;         // 分離力の基本値
 
@@ -1049,7 +1049,7 @@
                     // ============================================
 
                     // 目標トピックへの推進力(steeringForce)を最優先で適用
-                    let push = steeringForce.copy().mult(this.maxForce * 3.5);
+                    let push = steeringForce.copy().mult(this.maxForce);
                     this.applyForce(push);
 
                     // リーダーのBoids力を大幅に減衰（引っ張られ防止）
@@ -1266,9 +1266,9 @@
 
                 // 介入用閾値設定 [cite: 232-238]
                 this.thresholds = {
-                    safe: 0.5,
-                    critical: 0.1,
-                    leftout: 0.5 // v0
+                    safe: 0.05,
+                    critical: 0.2,
+                    leftout: 0.4 // v0
                 };
                 
                 this.momentum = createVector(0, 0);
@@ -1506,11 +1506,6 @@
                 // 各メンバーの更新（groupを渡してリーダー情報にアクセス）
                 for (let m of this.members) {
                     m.flock(this.members, this.topics, this.bounds, this.momentum, steeringForce, this);
-
-                    // ファシリテーター自身の位置制御（リスクメンバーの近くに配置する設計判断を採用）[cite: 392-397]
-                    if (m.isFacilitator) {
-                        this.updateFacilitatorPosition(m);
-                    }
 
                     m.update();
                     
