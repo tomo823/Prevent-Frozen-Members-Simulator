@@ -437,7 +437,7 @@
         let interestSensitivity = 1.0;      // 興味が行動に与える影響の強さ
         
         // 基本パラメータ（固定値 - 興味で自動調整される）
-        const cohesionBase = 3.0;           // 結合力の基本値
+        const cohesionBase = 4.0;           // 結合力の基本値
         const alignmentBase = 0.8;          // 整列力の基本値
         const separationBase = 1.0;         // 分離力の基本値
 
@@ -674,7 +674,6 @@
             }
 
             refillFromWaiting() {
-                console.log("%c⚠️ Topic Pool Refilled: 山札が空になったため待機列から補充しました。", "color: orange; font-weight: bold;");
                 this.pool = [...this.waitingList];
                 this.waitingList = [];
                 this.shuffle(this.pool);
@@ -1266,8 +1265,8 @@
 
                 // 介入用閾値設定 [cite: 232-238]
                 this.thresholds = {
-                    safe: 0.05,
-                    critical: 0.2,
+                    safe: 0.1,
+                    critical: 0.35,
                     leftout: 0.4 // v0
                 };
                 
@@ -1521,25 +1520,11 @@
 
                 // 【自動化の追加】
                 if (this.topicsVisitedCount > 40) {
-                    const status = this.topicPool.getDebugStatus();
-
-                    console.log("--- TopicPool Debug Report ---");
-                    console.log(`山札の残り話題数: ${status.remaining}`);
-                    console.log(`待機列（禁句中）: ${status.waiting}`);
-                    console.log(`ストック総計: ${status.total}`);
-
+                    this.halted = true; // グループを停止
                     console.log(`Group ${this.id}: 実験終了。データを出力します。`);
 
                     // 全グループ（0, 1, 2, 3）のログを個別に保存
-                    logger.downloadAllGroupsCSV([0, 1, 2, 3]);
-
-                    // TopicPoolの状態もデバッグ出力
-                    groups.forEach(g => {
-                        console.log(`Group ${g.id} TopicPool:`, g.topicPool.getDebugStatus());
-                    });
-                    this.halted = true; // グループを停止
-                    noLoop(); // p5.jsの描画ループを停止
-                    alert("シミュレーションが終了し、CSVを出力しました。");
+                    // logger.downloadAllGroupsCSV([0, 1, 2, 3]);
                 }
             }
 
@@ -1576,8 +1561,6 @@
                 // アクティブな一般メンバーが2人以下（0, 1, 2人）になったら停止
                 if (this.getActiveCount() <= 2) {
                     this.halted = true;
-                    console.log(`%c[STOP] Group ${this.id}: アクティブメンバーが2人以下になったため議論を終了します。`, "color: red;");
-                    
                     // 終了時にその時点のログを書き出す（オプション）
                     logger.downloadGroupCSV(this.id); 
                 }
@@ -1663,7 +1646,7 @@
                 let variance = interests.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / interests.length;
 
                 // 結合スコア (lambda=0.5で調整) [cite: 311, 318]
-                let lambda = 0.1;
+                let lambda = 10;
                 let balanceScore = minInterest * (1 - variance * lambda);
 
                 // 熱（繰り返し防止）も考慮 [cite: 312-314]
@@ -1797,7 +1780,6 @@
                     if (oldTile && oldTile.visitCount > 0) {
                         const newData = this.topicPool.drawTopic();
                         oldTile.setData(newData); 
-                        console.log(`Tile ${oldTile.id} refreshed with: ${newData.name}`);
                     }
 
                     logger.recordEvent('TOPIC_CHANGE', { 
@@ -2059,10 +2041,6 @@
                     type: type,
                     ...detail
                 });
-                // 開発時の生存確認用
-                if (type.includes('CRITICAL') || type.includes('RECOVERY')) {
-                    console.log(`[Metric Event] ${type}:`, detail);
-                }
             }
 
             // --- ヘルパー関数 ---
@@ -2140,7 +2118,7 @@
                 });
                 
                 // 別途、全グループ共通のイベントログ（TOPIC_CHANGEなど）も出力
-                this.downloadEventLog();
+                // this.downloadEventLog();
             }
 
             /**
@@ -2396,7 +2374,6 @@
             updateModeButton();
             updateUI();
 
-            console.log("Simulation initialized with MetricsLogger.");
         }
         
         /** モード切替ボタンのテキストを更新 */
@@ -2488,9 +2465,21 @@
             
             // グラフを描画
             drawInterestGraph();
-            
+
             // 8フレームごとにUIを更新
             if (frameCount % 8 === 0) updateUI();
+
+            let allHalted = groups.every(g => g.halted);
+
+            if (allHalted) {
+                console.log("全グループのシミュレーションが終了しました。データを一括出力します。");
+                
+                // ここで全グループのCSVをダウンロード
+                logger.downloadAllGroupsCSV([0, 1, 2, 3]);
+                
+                // システム全体のループを停止
+                noLoop(); 
+            }
         }
 
         /**
