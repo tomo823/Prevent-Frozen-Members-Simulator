@@ -1266,7 +1266,7 @@
                 // 介入用閾値設定 [cite: 232-238]
                 this.thresholds = {
                     safe: 0.1,
-                    critical: 0.35,
+                    critical: 0.3,
                     leftout: 0.4 // v0
                 };
                 
@@ -1488,7 +1488,7 @@
 
                 // 2. 健康診断（一定間隔で実行）[cite: 350-353, 438]
                 if (frameCount % leftOutCheckFrequency === 0) {
-                    this.updateMemberInterests();
+                    // this.updateMemberInterests();
                     this.judgeInterventionNecessity();
                     updateUI(); // UI表示を更新
                 }
@@ -1645,9 +1645,9 @@
                 let mean = interests.reduce((a, b) => a + b) / interests.length;
                 let variance = interests.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / interests.length;
 
-                // 結合スコア (lambda=0.5で調整) [cite: 311, 318]
-                let lambda = 10;
-                let balanceScore = minInterest * (1 - variance * lambda);
+                    // 結合スコア (lambda=0.5で調整) [cite: 311, 318]
+                    let lambda = 4.0;
+                    let balanceScore = minInterest * (1 - variance * lambda);
 
                 // 熱（繰り返し防止）も考慮 [cite: 312-314]
                 return balanceScore * (1 - candidateTopic.heat * 0.5);
@@ -1795,6 +1795,7 @@
                     newTopic.onEnter();
                     this.topicsVisitedCount++;
                     this.updateMemberInterests();
+                    this.judgeInterventionNecessity(); // その興味に基づいて即座にフラグ(Active)を更新
                     this.recordInterestSnapshot();
 
                     // ★修正ポイント：話題が変わった「この瞬間」だけ記録する
@@ -1920,7 +1921,7 @@
                 }
                 
                 // Group.draw() メソッド内に追加
-                if (this.facilitatorActive && this.targetTopic) {
+                if (this.facilitatorActive) {
                     // 1. グループの枠を強調（パルスするオレンジの枠）
                     let pulse = sin(frameCount * 0.1) * 50 + 200;
                     noFill();

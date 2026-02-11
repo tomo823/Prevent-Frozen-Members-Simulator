@@ -8,4 +8,5 @@ scripts/topics.json
 __pycache__/
 *.pyc
 .env
+*.csv
 data/topics/topics_orig.json
