@@ -1,6 +1,8 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+plt.rcParams['font.family'] = "MS Gothic"
+
 
 def plot_global_intervention_impact(file_path):
     df = pd.read_csv(file_path)
@@ -23,7 +25,7 @@ def plot_global_intervention_impact(file_path):
     
     # --- 折れ線グラフの描画 ---
     plt.figure(figsize=(6, 6))
-    x_labels = ['Total Grand Start', 'Total Grand Result']
+    x_labels = ['介入前', '介入後']
     x_pos = [0, 1]
     y_values = [grand_start, grand_result]
     
@@ -32,14 +34,15 @@ def plot_global_intervention_impact(file_path):
     
     # 数値のラベル表示（大きく表示）
     for x, y in zip(x_pos, y_values):
-        plt.text(x, y + 0.005, f'{y:.4f}', ha='center', va='bottom', fontweight='bold', fontsize=12)
+        plt.text(x, y + 0.005, f'{y:.4f}', ha='center', va='bottom', fontweight='bold', fontsize=13)
 
-    plt.xticks(x_pos, x_labels, fontsize=11)
-    plt.ylabel('Average Group Interest Mean', fontsize=11)
-    plt.title(f'Global Intervention Impact (Aggregated)\nFile: {file_path}')
-    plt.grid(True, axis='y', linestyle='--', alpha=0.7)
     plt.xlim(-0.5, 1.5)
-    plt.ylim(min(y_values) - 0.05, max(y_values) + 0.05)
+    plt.ylim(0.10, 0.35)
+    plt.tick_params(axis='y', labelsize=13)
+    plt.xticks(x_pos, x_labels, fontsize=18)
+    plt.ylabel('興味度平均', fontsize=18)
+    # plt.title(f'介入前後の興味度平均の変化\nFile: {file_path}')
+    plt.grid(True, axis='y', linestyle='--', alpha=0.7)
     plt.tight_layout()
     
     # 保存
@@ -48,7 +51,12 @@ def plot_global_intervention_impact(file_path):
     plt.show()
 
 # 実行
-plot_global_intervention_impact('v03ga4_1.csv')
-# plot_global_intervention_impact('v03ga4_2.csv')
-# plot_global_intervention_impact('v03ga4_3.csv')
-plot_global_intervention_impact('v03ga4_4.csv')
+plot_global_intervention_impact('v02ga1.csv')
+plot_global_intervention_impact('v02ga25.csv')
+plot_global_intervention_impact('v02ga4.csv')
+plot_global_intervention_impact('v03ga1.csv')
+plot_global_intervention_impact('v03ga25.csv')
+plot_global_intervention_impact('v03ga4.csv')
+plot_global_intervention_impact('v035ga1.csv')
+plot_global_intervention_impact('v035ga25.csv')
+plot_global_intervention_impact('v035ga4.csv')
