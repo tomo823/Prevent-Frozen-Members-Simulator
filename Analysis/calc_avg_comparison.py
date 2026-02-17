@@ -38,9 +38,11 @@ def plot_global_intervention_impact(file_path):
 
     plt.xlim(-0.5, 1.5)
     plt.ylim(0.10, 0.35)
-    plt.tick_params(axis='y', labelsize=13)
-    plt.xticks(x_pos, x_labels, fontsize=18)
-    plt.ylabel('興味度平均', fontsize=18)
+    plt.tick_params(axis='y', labelsize=18)
+    plt.xticks(x_pos, x_labels, fontsize=22)
+
+    plt.ylabel('興\n味\n度\n平\n均', rotation=0, labelpad=20, fontsize=22, va='center')
+
     # plt.title(f'介入前後の興味度平均の変化\nFile: {file_path}')
     plt.grid(True, axis='y', linestyle='--', alpha=0.7)
     plt.tight_layout()

@@ -47,11 +47,13 @@ def plot_corrected_intervention_scatter(file_path):
     
     plt.xlim(0, 0.25)
     plt.ylim(0, 0.4)
+    
+    plt.tick_params(axis='both', which='major', labelsize=18)
 
     # グラフの装飾
-    plt.xlabel('興味度分散')
-    plt.ylabel('興味度平均')
-    plt.legend()
+    plt.xlabel('興味度分散', fontsize=22)
+    plt.ylabel('興\n味\n度\n平\n均', rotation=0, labelpad=20, fontsize=22, va='center')
+
     plt.grid(True, linestyle='--', alpha=0.7)
     
     # 画像の保存

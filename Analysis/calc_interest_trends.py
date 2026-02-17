@@ -33,8 +33,13 @@ def plot_interest_trends_fixed(file_path):
         plt.axvspan(s, e, color='red', alpha=0.2, 
                     label='介入区間' if s == starts[0] else "", zorder=1)
 
-    plt.xlabel('話題遷移数')
-    plt.ylabel('興味度')
+    plt.xlabel('話題遷移数', fontsize=22)
+    plt.ylabel('興\n味\n度', rotation=0, labelpad=20, fontsize=22, va='center')
+
+    plt.xlim(0, 40)
+    plt.ylim(0, 0.6)
+    plt.tick_params(axis='both', which='major', labelsize=18)
+    
     plt.grid(True, linestyle=':', alpha=0.6)
     plt.legend(loc='upper right')
     
