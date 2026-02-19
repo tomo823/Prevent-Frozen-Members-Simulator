@@ -44,7 +44,7 @@ def plot_interest_trends_fixed(file_path):
     plt.legend(loc='upper right')
     
     save_name = file_path.replace('.csv', f'_interest_trends.png')
-    plt.savefig(save_name)
+    plt.savefig(save_name, dpi=400)
     plt.show()
 
 # 実行

@@ -49,7 +49,7 @@ def plot_global_intervention_impact(file_path):
     
     # 保存
     save_name = file_path.replace('.csv', '_avg_comparison.png')
-    plt.savefig(save_name)
+    plt.savefig(save_name, dpi=400)
     plt.show()
 
 # 実行

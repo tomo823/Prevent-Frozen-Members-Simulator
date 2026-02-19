@@ -58,7 +58,7 @@ def plot_corrected_intervention_scatter(file_path):
     
     # 画像の保存
     save_name = file_path.replace('.csv', '_intervention_scatter.png')
-    plt.savefig(save_name)
+    plt.savefig(save_name, dpi=400)
     plt.show()
 
 # 実行
